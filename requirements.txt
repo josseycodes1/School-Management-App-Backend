@@ -1,0 +1,21 @@
+# Core Django
+Django>=4.2,<5.1
+psycopg2-binary==2.9.9  # PostgreSQL support
+
+# Django REST Framework (for APIs)
+djangorestframework==3.14.0
+
+# Authentication
+djangorestframework-simplejwt==5.3.1  # JWT Authentication
+django-cors-headers==4.3.1  # Connect with frontend (Next.js)
+
+# Environment management
+python-decouple==3.8  # Load variables from .env
+python-dotenv==1.0.1  # Extra dotenv support if needed
+
+# Deployment
+gunicorn==21.2.0  # Production-ready WSGI server
+
+# Development tools
+black==24.3.0  # Auto code formatting
+pylint-django==2.5.3  # Django-specific linting
