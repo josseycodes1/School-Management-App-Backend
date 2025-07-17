@@ -2,7 +2,7 @@ from django.db import models
 from accounts.models import Student, Teacher, Parent
 from django.utils import timezone
 
-# This model stores information about upcoming or past events
+#stores information about upcoming or past events
 class Event(models.Model):
     title = models.CharField(max_length=255)  # The name of the event
     description = models.TextField()  # Detailed information about the event
@@ -14,7 +14,7 @@ class Event(models.Model):
     def __str__(self):
         return f"{self.title} on {self.date.strftime('%Y-%m-%d')}"
 
-# This model keeps track of people (students, teachers, parents) who will attend the event
+#model keeps track of people (students, teachers, parents) who will attend the event
 class EventParticipant(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='participants')  # Which event
     student = models.ForeignKey(Student, on_delete=models.SET_NULL, null=True, blank=True)  # Optional student

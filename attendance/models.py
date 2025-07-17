@@ -9,7 +9,7 @@ class AttendanceStatus(models.TextChoices):
     LATE = "late", "Late"
     EXCUSED = "excused", "Excused"
 
-# This model stores attendance information for each student
+# model stores attendance information for each student
 class AttendanceRecord(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     class_ref = models.ForeignKey(Classes, on_delete=models.CASCADE)  # Which class the student belongs to

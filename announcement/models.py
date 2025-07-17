@@ -1,11 +1,8 @@
 from django.db import models
-
-# Create your models here.
-from django.db import models
 from accounts.models import Student, Teacher, Parent
 from django.utils import timezone
 
-# This model stores the announcement content and metadata
+#stores the announcement content and metadata
 class Announcement(models.Model):
     title = models.CharField(max_length=255)  # Title of the announcement
     message = models.TextField()  # Main announcement body
@@ -18,7 +15,7 @@ class Announcement(models.Model):
     def __str__(self):
         return self.title
 
-# This model tracks who the announcement is for
+#tracks who the announcement is for
 class AnnouncementAudience(models.Model):
     announcement = models.ForeignKey(Announcement, on_delete=models.CASCADE, related_name='audiences')
     student = models.ForeignKey(Student, on_delete=models.SET_NULL, null=True, blank=True)
