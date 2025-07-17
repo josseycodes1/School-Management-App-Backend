@@ -1,0 +1,51 @@
+from django.db import models
+from academics.models import Subject, Classes
+from accounts.models import Student, Teacher
+
+# Grade model 
+class Grade(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+# Exam model
+class Exam(models.Model):
+    title = models.CharField(max_length=100)  # Name of the exam e.g., "First Term Math Exam"
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)  # Related subject
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)  # Who created/owns this exam
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE)  # Grade this exam is meant for
+    exam_date = models.DateField()  # Date the exam is scheduled
+    created_at = models.DateTimeField(auto_now_add=True)  # Automatically adds creation timestamp
+
+    def __str__(self):
+        return f"{self.title} - {self.subject.name}"
+
+# Assignment model
+class Assignment(models.Model):
+    title = models.CharField(max_length=100)
+    description = models.TextField()
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE)
+    due_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
+# Result model
+class Result(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, null=True, blank=True)
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, null=True, blank=True)
+    score = models.DecimalField(max_digits=5, decimal_places=2)  # allows scores like 98.50
+    graded_on = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        if self.exam:
+            return f"{self.student.user.first_name} - {self.exam.title}"
+        elif self.assignment:
+            return f"{self.student.user.first_name} - {self.assignment.title}"
+        return f"{self.student.user.first_name} - No assessment"
