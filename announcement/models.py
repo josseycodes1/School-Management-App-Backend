@@ -1,5 +1,5 @@
 from django.db import models
-from accounts.models import Student, Teacher, Parent
+from accounts.models import StudentProfile, TeacherProfile, ParentProfile
 from django.utils import timezone
 
 #stores the announcement content and metadata
@@ -18,9 +18,9 @@ class Announcement(models.Model):
 #tracks who the announcement is for
 class AnnouncementAudience(models.Model):
     announcement = models.ForeignKey(Announcement, on_delete=models.CASCADE, related_name='audiences')
-    student = models.ForeignKey(Student, on_delete=models.SET_NULL, null=True, blank=True)
-    teacher = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, blank=True)
-    parent = models.ForeignKey(Parent, on_delete=models.SET_NULL, null=True, blank=True)
+    student = models.ForeignKey(StudentProfile, on_delete=models.SET_NULL, null=True, blank=True)
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.SET_NULL, null=True, blank=True)
+    parent = models.ForeignKey(ParentProfile, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         target = self.student or self.teacher or self.parent

@@ -1,6 +1,6 @@
 from django.db import models
 from academics.models import Subject, Classes
-from accounts.models import Student, Teacher
+from accounts.models import StudentProfile, TeacherProfile
 
 # Grade model 
 class Grade(models.Model):
@@ -14,7 +14,7 @@ class Grade(models.Model):
 class Exam(models.Model):
     title = models.CharField(max_length=100)  # Name of the exam e.g., "First Term Math Exam"
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)  # Related subject
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)  # Who created/owns this exam
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.CASCADE)  # Who created/owns this exam
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE)  # Grade this exam is meant for
     exam_date = models.DateField()  # Date the exam is scheduled
     created_at = models.DateTimeField(auto_now_add=True)  # Automatically adds creation timestamp
@@ -27,7 +27,7 @@ class Assignment(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField()
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.CASCADE)
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE)
     due_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -37,7 +37,7 @@ class Assignment(models.Model):
 
 # Result model
 class Result(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, null=True, blank=True)
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, null=True, blank=True)
     score = models.DecimalField(max_digits=5, decimal_places=2)  # allows scores like 98.50

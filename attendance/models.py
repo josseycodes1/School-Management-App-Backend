@@ -1,5 +1,5 @@
 from django.db import models
-from accounts.models import Student, Teacher
+from accounts.models import StudentProfile, TeacherProfile
 from academics.models import Classes
 
 # Enum-like choices for attendance status
@@ -11,7 +11,7 @@ class AttendanceStatus(models.TextChoices):
 
 # model stores attendance information for each student
 class AttendanceRecord(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)
     class_ref = models.ForeignKey(Classes, on_delete=models.CASCADE)  # Which class the student belongs to
     date = models.DateField()  # The day this attendance was recorded
     status = models.CharField(
@@ -19,7 +19,7 @@ class AttendanceRecord(models.Model):
         choices=AttendanceStatus.choices,
         default=AttendanceStatus.PRESENT
     )
-    recorded_by = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True)  # Which teacher marked it
+    recorded_by = models.ForeignKey(TeacherProfile, on_delete=models.SET_NULL, null=True)  # Which teacher marked it
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

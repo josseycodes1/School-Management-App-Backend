@@ -1,12 +1,12 @@
 from django.db import models
-from accounts.models import Teacher
+from accounts.models import TeacherProfile
 
 
 # Classes Model (e.g., Primary 1, JSS2)
 class Classes(models.Model):
     name = models.CharField(max_length=50, unique=True)
     teacher = models.ForeignKey(
-        Teacher,
+        TeacherProfile,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -23,7 +23,7 @@ class Classes(models.Model):
 class Subject(models.Model):
     name = models.CharField(max_length=100)
     teacher = models.ForeignKey(
-        Teacher,
+        TeacherProfile,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
