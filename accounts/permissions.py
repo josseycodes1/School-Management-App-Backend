@@ -1,5 +1,16 @@
 
 from rest_framework import permissions
+from rest_framework import permissions
+
+class IsAdmin(permissions.BasePermission):
+    """Allows access only to admin users."""
+    def has_permission(self, request, view):
+        return request.user.is_staff
+
+class IsTeacherOrAdmin(permissions.BasePermission):
+    """Allows access to both teachers and admins."""
+    def has_permission(self, request, view):
+        return hasattr(request.user, 'teacher_profile') or request.user.is_staff
 
 class IsTeacher(permissions.BasePermission):
     """
