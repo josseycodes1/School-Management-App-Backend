@@ -45,6 +45,9 @@ INSTALLED_APPS = [
     'attendance',
     'events',
     'announcement',
+    
+    'rest_framework',
+    'rest_framework.authtoken',  # For token authentication
 ]
 
 MIDDLEWARE = [
