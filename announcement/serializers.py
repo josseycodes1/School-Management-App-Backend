@@ -15,6 +15,15 @@ class AnnouncementAudienceSerializer(serializers.ModelSerializer):
         model = AnnouncementAudience
         fields = ['id', 'announcement', 'student', 'teacher', 'parent']
         read_only_fields = ['announcement']
+        
+        
+class AnnouncementCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Announcement
+        fields = ['title', 'message', 'start_date', 'end_date', 'is_active']  # All required fields
+        extra_kwargs = {
+            'is_active': {'required': False, 'default': True}  # Example optional field
+        }
 
 class AnnouncementSerializer(serializers.ModelSerializer):
     audiences = AnnouncementAudienceSerializer(many=True, read_only=True)
