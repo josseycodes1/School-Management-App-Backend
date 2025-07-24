@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     
+    'django_extensions',
+    
     # Custom apps
     'accounts',
     'academics',
@@ -47,7 +49,8 @@ INSTALLED_APPS = [
     'announcement',
     
     'rest_framework',
-    'rest_framework.authtoken',  
+    'rest_framework.authtoken',
+    'rest_framework_simplejwt',  
     'drf_spectacular',
 ]
 
@@ -159,14 +162,15 @@ FRONTEND_URL = 'http://localhost:3000'
 # JWT settings
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=45),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-# Email configuration (for production)
+# Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
+
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # For production
 # EMAIL_HOST = 'your-smtp-server.com'
 # EMAIL_PORT = 587
@@ -176,4 +180,10 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For developm
 
 # Frontend URL for verification links
 FRONTEND_URL = 'http://localhost:3000'  # Change to your frontend URL
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+
 

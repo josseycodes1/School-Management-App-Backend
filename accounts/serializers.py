@@ -35,7 +35,7 @@ class UserSerializer(serializers.ModelSerializer):
         # Extract password and generate token
         password = validated_data.pop('password')
         verification_token = str(uuid.uuid4())
-        
+
         # Create user with verification token
         user = User.objects.create_user(
             password=password,
@@ -47,14 +47,14 @@ class UserSerializer(serializers.ModelSerializer):
 
         # Development vs Production handling
         if settings.DEBUG:
-            # In development: expose token in response
-            user.verification_token = verification_token
-            print(f"DEV MODE: Verification token for {user.email}: {verification_token}")
+            # In development: print token and make sure it's saved
+            print(f"DEV MODE: Verification token for {user.email}: {user.verification_token}")
         else:
             # In production: send email normally
             self.send_verification_email(user)
-        
+
         return user
+
 
     def send_verification_email(self, user):
         """Send verification email with token link"""
