@@ -2,10 +2,17 @@ from rest_framework import viewsets
 from django.db.models import Q
 from .models import AttendanceRecord
 from .serializers import AttendanceRecordSerializer, AttendanceCreateSerializer
-from accounts.permissions import IsTeacherOrAdmin  # Updated import
+from accounts.permissions import IsAdminOrReadOnly
+
+
+
+class SomeViewSet(viewsets.ModelViewSet):
+   permission_classes = [IsAdminOrReadOnly]
+queryset = AttendanceRecord.objects.all()
+
 
 class AttendanceViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsTeacherOrAdmin]  # Simplified permission
+    permission_classes = [IsAdminOrReadOnly]
     
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:

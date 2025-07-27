@@ -39,8 +39,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     
     'django_extensions',
+    'corsheaders',
     
-    # Custom apps
+    
     'accounts',
     'academics',
     'assessment',
@@ -62,6 +63,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -184,6 +186,11 @@ FRONTEND_URL = 'http://localhost:3000'  # Change to your frontend URL
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # or whatever port your Next.js frontend runs on
+]
+
 
 
 

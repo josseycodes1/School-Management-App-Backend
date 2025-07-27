@@ -6,12 +6,14 @@ from .serializers import (
     EventParticipantSerializer,
     EventParticipantCreateSerializer
 )
-from accounts.permissions import IsTeacherOrAdmin
+from accounts.permissions import IsAdminOrReadOnly
+
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by('-date')
     serializer_class = EventSerializer
-    permission_classes = [permissions.IsAuthenticated, IsTeacherOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
+
 
     def get_queryset(self):
         queryset = super().get_queryset()

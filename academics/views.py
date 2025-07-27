@@ -8,6 +8,7 @@ from .serializers import (
     LessonCreateSerializer
 )
 from rest_framework.permissions import IsAuthenticated
+from accounts.permissions import IsAdminOrReadOnly
 
 class ClassesViewSet(viewsets.ModelViewSet):
     queryset = Classes.objects.all()

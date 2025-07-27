@@ -18,6 +18,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
 from accounts.serializers import UserSerializer
 from rest_framework.permissions import AllowAny
+from .permissions import IsAdminOrReadOnly
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -97,25 +98,26 @@ class LoginAPIView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+
+class AdminProfileViewSet(viewsets.ModelViewSet):
+    queryset = AdminProfile.objects.all()
+    serializer_class = AdminProfileSerializer
+    permission_classes = [IsAdminOrReadOnly]
+
+
 class TeacherProfileViewSet(viewsets.ModelViewSet):
     queryset = TeacherProfile.objects.all()
     serializer_class = TeacherProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminOrReadOnly]
 
 
 class StudentProfileViewSet(viewsets.ModelViewSet):
     queryset = StudentProfile.objects.all()
     serializer_class = StudentProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminOrReadOnly]
 
 
 class ParentProfileViewSet(viewsets.ModelViewSet):
     queryset = ParentProfile.objects.all()
     serializer_class = ParentProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-
-class AdminProfileViewSet(viewsets.ModelViewSet):
-    queryset = AdminProfile.objects.all()
-    serializer_class = AdminProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminOrReadOnly]

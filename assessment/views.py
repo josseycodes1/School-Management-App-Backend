@@ -2,17 +2,17 @@
 from rest_framework import viewsets
 from .models import Grade, Exam, Assignment, Result
 from .serializers import GradeSerializer, ExamSerializer, AssignmentSerializer, ResultSerializer
-from accounts.permissions import IsTeacher, IsStudent, IsTeacherOrReadOnly
+from accounts.permissions import IsTeacher, IsStudent, IsAdminOrReadOnly
 from django.db.models import Q  # Add this import at the top
 from rest_framework import viewsets
 from .models import Result
 from .serializers import ResultSerializer
-from accounts.permissions import IsTeacher, IsStudent
+from accounts.permissions import IsAdminOrReadOnly
 
 class GradeViewSet(viewsets.ModelViewSet):
     queryset = Grade.objects.all()
     serializer_class = GradeSerializer
-    permission_classes = [IsTeacherOrReadOnly]  # Teachers can edit, others can view
+    permission_classes = [IsAdminOrReadOnly]  # Teachers can edit, others can view
 
 class ExamViewSet(viewsets.ModelViewSet):
     serializer_class = ExamSerializer

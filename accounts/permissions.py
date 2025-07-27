@@ -1,36 +1,37 @@
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 
-from rest_framework import permissions
-from rest_framework import permissions
-
-class IsAdmin(permissions.BasePermission):
-    """Allows access only to admin users."""
+class IsAdmin(BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_staff
+        return request.user and request.user.is_authenticated and request.user.role == "admin"
 
-class IsTeacherOrAdmin(permissions.BasePermission):
-    """Allows access to both teachers and admins."""
+class IsTeacher(BasePermission):
     def has_permission(self, request, view):
-        return hasattr(request.user, 'teacher_profile') or request.user.is_staff
+        return request.user and request.user.is_authenticated and request.user.role == "teacher"
 
-class IsTeacher(permissions.BasePermission):
-    """
-    Allows access only to authenticated teachers.
-    """
+class IsStudent(BasePermission):
     def has_permission(self, request, view):
-        return hasattr(request.user, 'teacher_profile')
+        return request.user and request.user.is_authenticated and request.user.role == "student"
 
-class IsStudent(permissions.BasePermission):
-    """
-    Allows access only to authenticated students.
-    """
+class IsParent(BasePermission):
     def has_permission(self, request, view):
-        return hasattr(request.user, 'student_profile')
+        return request.user and request.user.is_authenticated and request.user.role == "parent"
 
-class IsTeacherOrReadOnly(permissions.BasePermission):
-    """
-    Allows read access to anyone, but write access only to teachers.
-    """
+from rest_framework.permissions import BasePermission, SAFE_METHODS
+
+class IsAdminOrReadOnly(BasePermission):
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return hasattr(request.user, 'teacher_profile')
+        if request.method in SAFE_METHODS:
+            # Everyone who is logged in can see (GET, HEAD, OPTIONS)
+            return request.user and request.user.is_authenticated
+        # Only admin can edit, create, delete
+        return request.user and request.user.is_authenticated and request.user.role == "admin"
+from rest_framework.permissions import BasePermission, SAFE_METHODS
+
+class IsAdminOrReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            # Everyone who is logged in can see (GET, HEAD, OPTIONS)
+            return request.user and request.user.is_authenticated
+        # Only admin can edit, create, delete
+        return request.user and request.user.is_authenticated and request.user.role == "admin"
+

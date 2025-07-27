@@ -9,6 +9,8 @@ from .serializers import (
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db.models import Q
+from accounts.permissions import IsAdminOrReadOnly
+
 
 class AnnouncementViewSet(viewsets.ModelViewSet):
     serializer_class = AnnouncementSerializer
