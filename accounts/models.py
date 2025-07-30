@@ -26,7 +26,14 @@ class UserManager(BaseUserManager):
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
+
+        # Generate verification token BEFORE save
+        if not extra_fields.get('is_verified', False):
+            user.verification_token = uuid.uuid4().hex
+            user.verification_token_created_at = timezone.now()
+
         user.save(using=self._db)
+
         
         # Generate verification token for new users
         if not extra_fields.get('is_verified', False):

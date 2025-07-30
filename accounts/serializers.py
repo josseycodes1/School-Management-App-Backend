@@ -2,8 +2,9 @@ from rest_framework import serializers
 from .models import User, AdminProfile, TeacherProfile, StudentProfile, ParentProfile
 from django.core.mail import send_mail
 from django.conf import settings
-from django.utils import timezone
 import uuid
+from django.db import IntegrityError
+from django.utils import timezone
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
@@ -12,88 +13,101 @@ class UserSerializer(serializers.ModelSerializer):
         min_length=8,
         style={'input_type': 'password'}
     )
-    verification_token = serializers.CharField(read_only=True)  # Expose token in dev mode
+    verification_token = serializers.CharField(read_only=True)
 
     class Meta:
         model = User
         fields = [
-            'id', 
-            'email', 
+            'id',
+            'email',
             'password',
-            'first_name', 
-            'last_name', 
-            'role', 
+            'first_name',
+            'last_name',
+            'role',
             'is_verified',
-            'verification_token'  # Include the token field
+            'verification_token',
+            'date_joined',
+            'last_updated'
         ]
         extra_kwargs = {
             'is_verified': {'read_only': True},
+            'date_joined': {'read_only': True},
+            'last_updated': {'read_only': True},
             'role': {'required': True}
         }
 
     def create(self, validated_data):
-        # Extract password and generate token
-        password = validated_data.pop('password')
-        verification_token = str(uuid.uuid4())
+        try:
+            # Create user with all fields including verification
+            user = User.objects.create_user(
+                email=validated_data['email'],
+                password=validated_data['password'],
+                first_name=validated_data['first_name'],
+                last_name=validated_data['last_name'],
+                role=validated_data['role'],
+                is_active=False
+            )
 
-        # Create user with verification token
-        user = User.objects.create_user(
-            password=password,
-            verification_token=verification_token,
-            verification_token_created_at=timezone.now(),
-            is_active=False,
-            **validated_data
-        )
+            # Print token in development
+            if settings.DEBUG:
+                print(f"Verification token for {user.email}: {user.verification_token}")
 
-        # Development vs Production handling
-        if settings.DEBUG:
-            # In development: print token and make sure it's saved
-            print(f"DEV MODE: Verification token for {user.email}: {user.verification_token}")
-        else:
-            # In production: send email normally
-            self.send_verification_email(user)
+            return user
 
-        return user
-
+        except IntegrityError as e:
+            if 'email' in str(e):
+                raise serializers.ValidationError({'email': 'This email already exists'})
+            raise
 
     def send_verification_email(self, user):
         """Send verification email with token link"""
-        verification_link = f"{settings.FRONTEND_URL}/verify-email?token={user.verification_token}"
+        verification_link = f"{settings.FRONTEND_URL}/verify-email?token={user.verification_token}&email={user.email}"
         try:
             send_mail(
-                "Verify Your Email",
-                f"Click to verify your account: {verification_link}",
+                "Verify Your Email Address",
+                f"Please click this link to verify your email: {verification_link}",
                 settings.DEFAULT_FROM_EMAIL,
                 [user.email],
                 fail_silently=False,
             )
         except Exception as e:
-            # Log email sending errors but don't fail user creation
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to send verification email: {e}")
 
-# Profile serializers remain unchanged
+class AdminProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = AdminProfile
+        fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at']
+
 class TeacherProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    
     class Meta:
         model = TeacherProfile
         fields = '__all__'
-        
-class AdminProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    class Meta:
-        model = AdminProfile
-        fields = '__all__' 
+        read_only_fields = ['created_at', 'updated_at']
 
 class StudentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    parent = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(role='parent'),
+        required=False,
+        allow_null=True
+    )
+    
     class Meta:
         model = StudentProfile
         fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at']
 
 class ParentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    
     class Meta:
         model = ParentProfile
         fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at']

@@ -64,6 +64,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -173,12 +174,14 @@ SIMPLE_JWT = {
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
 
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # For production
-# EMAIL_HOST = 'your-smtp-server.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'your-email@example.com'
-# EMAIL_HOST_PASSWORD = 'yourpassword'
+# settings.py
+#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+#EMAIL_HOST = 'smtp.gmail.com'
+#EMAIL_PORT = 587
+#EMAIL_USE_TLS = True
+#EMAIL_HOST_USER = 'queenjossey@gmail.com'  # Your Gmail
+#EMAIL_HOST_PASSWORD = 'your-app-password'  # NOT your regular password!
+#DEFAULT_FROM_EMAIL = 'Your Name <your@gmail.com>'
 
 # Frontend URL for verification links
 FRONTEND_URL = 'http://localhost:3000'  # Change to your frontend URL
@@ -188,9 +191,21 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # or whatever port your Next.js frontend runs on
+    "http://localhost:3000", 
+    "http://127.0.0.1:3000",
 ]
 
+CORS_ALLOW_CREDENTIALS = True 
 
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # JWT support
+        'rest_framework.authentication.SessionAuthentication',        # Optional
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # Global default
+    ]
+}
 

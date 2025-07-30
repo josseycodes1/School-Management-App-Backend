@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.utils import timezone
@@ -15,11 +15,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from accounts.models import User
-from accounts.serializers import UserSerializer
 from rest_framework.permissions import AllowAny
 from .permissions import IsAdminOrReadOnly
-
+from rest_framework.permissions import IsAuthenticated
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -27,26 +25,26 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'verify_email']:
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
-    @action(
-        detail=False,
-        methods=['get'],
-        permission_classes=[permissions.AllowAny],
-        authentication_classes=[]  # 🔓 disables JWT authentication for this endpoint
-    )
+    # Changed to use @action properly without conflicting with existing routes
+    @action(detail=False, methods=['post'], url_path='verify_email')
     def verify_email(self, request):
-        token = request.query_params.get('token')
-        if not token:
+        token = request.data.get('token')
+        email = request.data.get('email')
+        
+        if not token or not email:
             return Response(
-                {"error": "Token is required"},
+                {"error": "Token and email are required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
-            # ✅ Correct: use verification_token here
-            user = User.objects.get(verification_token=token)
+            user = User.objects.get(
+                email=email,
+                verification_token=token
+            )
 
             if user.is_verification_token_expired:
                 user.verification_token = None
@@ -70,13 +68,12 @@ class UserViewSet(viewsets.ModelViewSet):
 
         except User.DoesNotExist:
             return Response(
-                {"error": "Invalid verification token"},
+                {"error": "Invalid verification token or email"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-            
 
 class LoginAPIView(APIView):
-    permission_classes = [AllowAny]  # ✅ This is very important
+    permission_classes = [AllowAny]
 
     def post(self, request):
         email = request.data.get("email")
@@ -91,33 +88,35 @@ class LoginAPIView(APIView):
             return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
         refresh = RefreshToken.for_user(user)
-
+        
         return Response({
             "refresh": str(refresh),
-            "access": str(refresh.access_token)
+            "access": str(refresh.access_token),
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role,
+                "first_name": user.first_name,
+                "last_name": user.last_name
+            }
         }, status=status.HTTP_200_OK)
-
-
 
 class AdminProfileViewSet(viewsets.ModelViewSet):
     queryset = AdminProfile.objects.all()
     serializer_class = AdminProfileSerializer
-    permission_classes = [IsAdminOrReadOnly]
-
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
 class TeacherProfileViewSet(viewsets.ModelViewSet):
     queryset = TeacherProfile.objects.all()
     serializer_class = TeacherProfileSerializer
-    permission_classes = [IsAdminOrReadOnly]
-
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
 class StudentProfileViewSet(viewsets.ModelViewSet):
     queryset = StudentProfile.objects.all()
     serializer_class = StudentProfileSerializer
-    permission_classes = [IsAdminOrReadOnly]
-
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
 class ParentProfileViewSet(viewsets.ModelViewSet):
     queryset = ParentProfile.objects.all()
     serializer_class = ParentProfileSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly, IsAuthenticated]
