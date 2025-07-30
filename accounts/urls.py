@@ -1,9 +1,18 @@
-# accounts/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import UserViewSet, TeacherProfileViewSet, StudentProfileViewSet, ParentProfileViewSet, AdminProfileViewSet
+from .views import (
+    UserViewSet, 
+    TeacherProfileViewSet, 
+    StudentProfileViewSet, 
+    ParentProfileViewSet, 
+    AdminProfileViewSet,
+    LoginAPIView,
+    PasswordResetView,
+    PasswordResetVerifyView,
+    PasswordResetResendView,
+    ResendVerificationView  # Add the new standalone view
+)
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import LoginAPIView 
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
@@ -13,9 +22,17 @@ router.register(r'parents', ParentProfileViewSet, basename='parent')
 router.register(r'admins', AdminProfileViewSet, basename='admin')
 
 urlpatterns = [
-    path('', include(router.urls)),  # This will prefix all routes with api/accounts/
-    path('api/', include(router.urls)),  # Now all routes will be under /api/users/
+    # Router URLs will be under /api/accounts/
+    path('', include(router.urls)),
+    
+    # Authentication
     path('login/', LoginAPIView.as_view(), name='login'),
-    path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    
+    # Password Reset
+    path('password_reset/', PasswordResetView.as_view(), name='password-reset'),
+    path('password_reset/verify/', PasswordResetVerifyView.as_view(), name='password-reset-verify'),
+    path('password_reset/resend/', PasswordResetResendView.as_view(), name='password-reset-resend'),
+    path('users/resend_verification/', ResendVerificationView.as_view(), name='resend-verification'),
 ]

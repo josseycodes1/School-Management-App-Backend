@@ -3,8 +3,6 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
 from datetime import timedelta
-from django.contrib.auth.tokens import default_token_generator
-
 
 class Gender(models.TextChoices):
     MALE = "M", "Male"
@@ -26,16 +24,8 @@ class UserManager(BaseUserManager):
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
-
-        # Generate verification token BEFORE save
-        if not extra_fields.get('is_verified', False):
-            user.verification_token = uuid.uuid4().hex
-            user.verification_token_created_at = timezone.now()
-
         user.save(using=self._db)
 
-        
-        # Generate verification token for new users
         if not extra_fields.get('is_verified', False):
             user.generate_verification_token()
             
@@ -66,29 +56,39 @@ class User(AbstractBaseUser, PermissionsMixin):
     verification_token_created_at = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(default=timezone.now)
     last_updated = models.DateTimeField(auto_now=True)
-    verification_token_created = models.DateTimeField(null=True, blank=True)
+    password_reset_token = models.CharField(max_length=100, blank=True, null=True, unique=True)
+    password_reset_token_created_at = models.DateTimeField(null=True, blank=True)
     
-
     objects = UserManager()
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name", "role"]
+    
+    def generate_password_reset_token(self):
+        self.password_reset_token = uuid.uuid4().hex 
+        self.password_reset_token_created_at = timezone.now()
+        self.save(update_fields=['password_reset_token', 'password_reset_token_created_at'])
+        return self.password_reset_token 
+
+    @property 
+    def is_password_reset_token_expired(self):
+        if not self.password_reset_token_created_at:
+            return True
+        return timezone.now() > (self.password_reset_token_created_at + timedelta(hours=24))
 
     def generate_verification_token(self):
-        """Generate a unique verification token and set creation time"""
         self.verification_token = uuid.uuid4().hex
         self.verification_token_created_at = timezone.now()
-        self.save()
+        self.save(update_fields=['verification_token', 'verification_token_created_at'])
+        return self.verification_token
 
     @property
     def is_verification_token_expired(self):
-        """Check if verification token is older than 24 hours"""
         if not self.verification_token_created_at:
             return True
         return timezone.now() > (self.verification_token_created_at + timedelta(hours=24))
 
     def verify_user(self):
-        """Mark user as verified and clear token"""
         self.is_verified = True
         self.is_active = True
         self.verification_token = None
@@ -120,7 +120,7 @@ class ProfileMixin(models.Model):
     birth_date = models.DateField(null=True, blank=True)
     photo = models.ImageField(upload_to='profile_photos/', null=True, blank=True)
     blood_type = models.CharField(max_length=3, blank=True)
-    created_at = models.DateTimeField(default=timezone.now)  # Not auto_now_add
+    created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -146,7 +146,7 @@ class TeacherProfile(ProfileMixin):
 
 class StudentProfile(ProfileMixin):
     parent = models.ForeignKey(
-        User, 
+        'User',  # Changed to string reference to avoid circular import
         on_delete=models.SET_NULL, 
         null=True, 
         blank=True,
