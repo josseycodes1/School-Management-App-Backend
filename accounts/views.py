@@ -15,7 +15,9 @@ from .serializers import (
     SubjectCreateSerializer,
     LessonCreateSerializer,
     StudentOnboardingSerializer,
-    StudentOnboardingProgressSerializer
+    StudentOnboardingProgressSerializer,
+    TeacherOnboardingProgressSerializer,
+    TeacherOnboardingSerializer
 )
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -352,6 +354,63 @@ class TeacherProfileViewSet(viewsets.ModelViewSet):
     queryset = TeacherProfile.objects.all()
     serializer_class = TeacherProfileSerializer
     permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+    
+class TeacherOnboardingView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        try:
+            # Get or create teacher profile
+            profile, created = TeacherProfile.objects.get_or_create(
+                user=request.user,
+                defaults={'user': request.user}
+            )
+            
+            serializer = TeacherOnboardingSerializer(
+                profile,
+                data=request.data,
+                partial=True,
+                context={'request': request}
+            )
+            
+            if not serializer.is_valid():
+                return Response(
+                    serializer.errors,
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class TeacherOnboardingProgressView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            teacher_profile = TeacherProfile.objects.get(user=request.user)
+            serializer = TeacherOnboardingProgressSerializer(teacher_profile)
+            return Response(serializer.data)
+        except TeacherProfile.DoesNotExist:
+            return Response({
+                "progress": 0,
+                "completed": False,
+                "required_fields": {
+                    'phone': False,
+                    'address': False,
+                    'gender': False,
+                    'birth_date': False,
+                    'subject_specialization': False,
+                    'hire_date': False,
+                    'photo': False
+                }
+            })
 
 class ParentProfileViewSet(viewsets.ModelViewSet):
     queryset = ParentProfile.objects.all()

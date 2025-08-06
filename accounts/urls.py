@@ -12,7 +12,9 @@ from .views import (
     PasswordResetResendView,
     ResendVerificationView,
     StudentOnboardingView,
-    StudentOnboardingProgressView
+    StudentOnboardingProgressView,
+    TeacherOnboardingView,
+    TeacherOnboardingProgressView
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -27,6 +29,8 @@ urlpatterns = [
     #Custom endpoints FIRST
     path('students/onboarding/', StudentOnboardingView.as_view(), name='student-onboarding'),
     path('students/onboarding/progress/', StudentOnboardingProgressView.as_view(), name='student-onboarding-progress'),
+    path('teachers/onboarding/', TeacherOnboardingView.as_view(), name='teacher-onboarding'),
+    path('teachers/onboarding/progress/', TeacherOnboardingProgressView.as_view(), name='teacher-onboarding-progress'),
 
 
     # Router URLs after
