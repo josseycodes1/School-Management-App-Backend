@@ -17,7 +17,9 @@ from .serializers import (
     StudentOnboardingSerializer,
     StudentOnboardingProgressSerializer,
     TeacherOnboardingProgressSerializer,
-    TeacherOnboardingSerializer
+    TeacherOnboardingSerializer,
+    ParentOnboardingSerializer,
+    ParentOnboardingProgressSerializer
 )
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -416,6 +418,62 @@ class ParentProfileViewSet(viewsets.ModelViewSet):
     queryset = ParentProfile.objects.all()
     serializer_class = ParentProfileSerializer
     permission_classes = [IsAdminOrReadOnly, IsAuthenticated]
+    
+class ParentOnboardingView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        try:
+            # Get or create parent profile
+            profile, created = ParentProfile.objects.get_or_create(
+                user=request.user,
+                defaults={'user': request.user}
+            )
+            
+            serializer = ParentOnboardingSerializer(
+                profile,
+                data=request.data,
+                partial=True,
+                context={'request': request}
+            )
+            
+            if not serializer.is_valid():
+                return Response(
+                    serializer.errors,
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class ParentOnboardingProgressView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            parent_profile = ParentProfile.objects.get(user=request.user)
+            serializer = ParentOnboardingProgressSerializer(parent_profile)
+            return Response(serializer.data)
+        except ParentProfile.DoesNotExist:
+            return Response({
+                "progress": 0,
+                "completed": False,
+                "required_fields": {
+                    'phone': False,
+                    'address': False,
+                    'gender': False,
+                    'birth_date': False,
+                    'emergency_contact': False,
+                    'photo': False
+                }
+            })
 
 class ClassesViewSet(viewsets.ModelViewSet):
     queryset = Classes.objects.all()

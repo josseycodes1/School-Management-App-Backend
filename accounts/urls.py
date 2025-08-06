@@ -14,7 +14,9 @@ from .views import (
     StudentOnboardingView,
     StudentOnboardingProgressView,
     TeacherOnboardingView,
-    TeacherOnboardingProgressView
+    TeacherOnboardingProgressView,
+    ParentOnboardingView,
+    ParentOnboardingProgressView
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -31,6 +33,8 @@ urlpatterns = [
     path('students/onboarding/progress/', StudentOnboardingProgressView.as_view(), name='student-onboarding-progress'),
     path('teachers/onboarding/', TeacherOnboardingView.as_view(), name='teacher-onboarding'),
     path('teachers/onboarding/progress/', TeacherOnboardingProgressView.as_view(), name='teacher-onboarding-progress'),
+    path('parents/onboarding/', ParentOnboardingView.as_view(), name='parent-onboarding'),
+    path('parents/onboarding/progress/', ParentOnboardingProgressView.as_view(), name='parent-onboarding-progress'),
 
 
     # Router URLs after
