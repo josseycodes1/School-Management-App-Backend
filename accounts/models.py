@@ -146,7 +146,7 @@ class TeacherProfile(ProfileMixin):
 
 class StudentProfile(ProfileMixin):
     parent = models.ForeignKey(
-        'User',  # Changed to string reference to avoid circular import
+        'User',  
         on_delete=models.SET_NULL, 
         null=True, 
         blank=True,
@@ -157,3 +157,71 @@ class StudentProfile(ProfileMixin):
     class_level = models.CharField(max_length=50, blank=True)
     academic_year = models.CharField(max_length=20, blank=True)
     medical_notes = models.TextField(blank=True)
+    is_onboarded = models.BooleanField(default=False)
+    photo = models.ImageField(
+        upload_to='profile_photos/',
+        null=False,  # No longer nullable
+        blank=False,  # Not optional
+        verbose_name="Profile Photo"
+    )
+
+
+    
+    
+# Classes Model (e.g., Primary 1, JSS2)
+class AcademicYear(models.Model):
+    name = models.CharField(max_length=20, unique=True)  # "2024/2025"
+    current = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return self.name
+
+class Classes(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    teacher = models.ForeignKey(
+        'accounts.TeacherProfile',  # Changed to string reference
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='classes'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+class Subject(models.Model):
+    name = models.CharField(max_length=100)
+    teacher = models.ForeignKey(
+        'accounts.TeacherProfile',  # Changed to string reference
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='subjects'
+    )
+    assigned_class = models.ForeignKey(
+        'Classes',  # Self-reference
+        on_delete=models.CASCADE,
+        related_name='subjects'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('name', 'assigned_class')
+
+    def __str__(self):
+        return f"{self.name} - {self.assigned_class.name}"
+
+class Lesson(models.Model):
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name='lessons'
+    )
+    date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.subject.name})"

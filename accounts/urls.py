@@ -10,7 +10,9 @@ from .views import (
     PasswordResetView,
     PasswordResetVerifyView,
     PasswordResetResendView,
-    ResendVerificationView  # Add the new standalone view
+    ResendVerificationView,
+    StudentOnboardingView,
+    StudentOnboardingProgressView
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -22,9 +24,14 @@ router.register(r'parents', ParentProfileViewSet, basename='parent')
 router.register(r'admins', AdminProfileViewSet, basename='admin')
 
 urlpatterns = [
-    # Router URLs will be under /api/accounts/
+    #Custom endpoints FIRST
+    path('students/onboarding/', StudentOnboardingView.as_view(), name='student-onboarding'),
+    path('students/onboarding/progress/', StudentOnboardingProgressView.as_view(), name='student-onboarding-progress'),
+
+
+    # Router URLs after
     path('', include(router.urls)),
-    
+
     # Authentication
     path('login/', LoginAPIView.as_view(), name='login'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

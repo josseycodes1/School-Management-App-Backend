@@ -23,7 +23,6 @@ urlpatterns = [
     # API endpoints
     path('api/accounts/', include('accounts.urls')),
     path('api/assessment/', include('assessment.urls')),
-    path('api/academics/', include('academics.urls')),
     path('api/announcement/', include('announcement.urls')),
     path('api/attendance/', include('attendance.urls')),
     path('api/events/', include('events.urls')),

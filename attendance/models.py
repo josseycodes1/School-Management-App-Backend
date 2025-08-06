@@ -1,6 +1,6 @@
 from django.db import models
 from accounts.models import StudentProfile, TeacherProfile
-from academics.models import Classes
+from accounts.models import Classes
 
 # Enum-like choices for attendance status
 class AttendanceStatus(models.TextChoices):

@@ -1,7 +1,7 @@
 
 from rest_framework import serializers
 from .models import Grade, Exam, Assignment, Result
-from academics.serializers import SubjectSerializer
+from accounts.serializers import SubjectSerializer
 from accounts.serializers import TeacherProfileSerializer, StudentProfileSerializer
 
 class GradeSerializer(serializers.ModelSerializer):

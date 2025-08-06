@@ -1,5 +1,5 @@
 from django.db import models
-from academics.models import Subject, Classes
+from accounts.models import Subject, Classes
 from accounts.models import StudentProfile, TeacherProfile
 
 # Grade model 

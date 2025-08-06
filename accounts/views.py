@@ -2,23 +2,33 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.utils import timezone
-from .models import User, TeacherProfile, StudentProfile, ParentProfile, AdminProfile
+from .models import User, TeacherProfile, StudentProfile, ParentProfile, AdminProfile, Classes, Subject, Lesson
 from .serializers import (
     UserSerializer, 
     TeacherProfileSerializer, 
     StudentProfileSerializer, 
     ParentProfileSerializer, 
-    AdminProfileSerializer
+    AdminProfileSerializer,
+    ClassesSerializer,
+    SubjectSerializer,
+    LessonSerializer,
+    SubjectCreateSerializer,
+    LessonCreateSerializer,
+    StudentOnboardingSerializer,
+    StudentOnboardingProgressSerializer
 )
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .permissions import IsAdminOrReadOnly
+from .permissions import IsAdminOrReadOnly, IsOnboardingStudentOrAdmin, IsOwnerOrAdmin
 from django.core.mail import send_mail
 from django.conf import settings
 from datetime import timedelta
-import uuid
+from rest_framework import viewsets
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework import status
+from django.core.exceptions import ObjectDoesNotExist
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -93,48 +103,48 @@ class LoginAPIView(APIView):
         email = request.data.get("email")
         password = request.data.get("password")
 
-        if email is None or password is None:
+        if not email or not password:
             return Response({"error": "Email and password required"}, status=status.HTTP_400_BAD_REQUEST)
 
         user = authenticate(request, email=email, password=password)
 
-        if user is None:
+        if not user:
             return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
+        # Generate tokens
         refresh = RefreshToken.for_user(user)
-        
+        access_token = str(refresh.access_token)
+
+        # Check onboarding status safely
+        onboarding_complete = True
+        if user.role == 'student':
+            try:
+                profile = StudentProfile.objects.get(user=user)
+                required_fields = [
+                    'phone', 'address', 'gender',
+                    'birth_date', 'parent', 'class_level',
+                    'photo'
+                ]
+                onboarding_complete = all(
+                    getattr(profile, field) for field in required_fields
+                )
+            except StudentProfile.DoesNotExist:
+                onboarding_complete = False
+
         return Response({
             "refresh": str(refresh),
-            "access": str(refresh.access_token),
+            "access": access_token,
             "user": {
                 "id": user.id,
                 "email": user.email,
                 "role": user.role,
                 "first_name": user.first_name,
-                "last_name": user.last_name
+                "last_name": user.last_name,
+                "onboarding_complete": onboarding_complete
             }
         }, status=status.HTTP_200_OK)
 
-class AdminProfileViewSet(viewsets.ModelViewSet):
-    queryset = AdminProfile.objects.all()
-    serializer_class = AdminProfileSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
-
-class TeacherProfileViewSet(viewsets.ModelViewSet):
-    queryset = TeacherProfile.objects.all()
-    serializer_class = TeacherProfileSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
-
-class StudentProfileViewSet(viewsets.ModelViewSet):
-    queryset = StudentProfile.objects.all()
-    serializer_class = StudentProfileSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
-
-class ParentProfileViewSet(viewsets.ModelViewSet):
-    queryset = ParentProfile.objects.all()
-    serializer_class = ParentProfileSerializer
-    permission_classes = [IsAdminOrReadOnly, IsAuthenticated]
-
+        
 class PasswordResetView(APIView):
     permission_classes = [AllowAny]
 
@@ -233,4 +243,122 @@ class ResendVerificationView(APIView):
                 "token": token
             })
         except User.DoesNotExist:
-            return Response({"error": "Email not found or already verified"}, status=400)
+            return Response({"error": "Email not found or already verified"}, status=400)        
+    
+class StudentOnboardingView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        try:
+            # Get or create student profile
+            profile, created = StudentProfile.objects.get_or_create(
+                user=request.user,
+                defaults={'user': request.user}
+            )
+            
+            serializer = StudentOnboardingSerializer(
+                profile,
+                data=request.data,
+                partial=True,
+                context={'request': request}
+            )
+            
+            if not serializer.is_valid():
+                return Response(
+                    serializer.errors,
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class StudentOnboardingProgressView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            student_profile = StudentProfile.objects.get(user=request.user)
+            serializer = StudentOnboardingProgressSerializer(student_profile)
+            return Response(serializer.data)
+        except StudentProfile.DoesNotExist:
+            # Return empty progress if profile doesn't exist yet
+            return Response({
+                "progress": 0,
+                "completed": False,
+                "required_fields": {
+                    'phone': False,
+                    'address': False,
+                    'gender': False,
+                    'birth_date': False,
+                    'parent': False,
+                    'class_level': False,
+                    'photo': False,
+                    'admission_number': False
+                }
+            })
+
+class StudentProfileViewSet(viewsets.ModelViewSet):
+    queryset = StudentProfile.objects.all()
+    serializer_class = StudentProfileSerializer
+    permission_classes = [IsAuthenticated, IsOnboardingStudentOrAdmin, IsOwnerOrAdmin]
+
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "admin":
+            return StudentProfile.objects.all()
+        return StudentProfile.objects.filter(user=user)
+
+
+class SubjectViewSet(viewsets.ModelViewSet):
+    queryset = Subject.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return SubjectCreateSerializer
+        return SubjectSerializer
+
+class LessonViewSet(viewsets.ModelViewSet):
+    queryset = Lesson.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return LessonCreateSerializer
+        return LessonSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        subject_id = self.request.query_params.get('subject')
+        if subject_id:
+            queryset = queryset.filter(subject_id=subject_id)
+        return queryset
+    
+class AdminProfileViewSet(viewsets.ModelViewSet):
+    queryset = AdminProfile.objects.all()
+    serializer_class = AdminProfileSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+
+class TeacherProfileViewSet(viewsets.ModelViewSet):
+    queryset = TeacherProfile.objects.all()
+    serializer_class = TeacherProfileSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+
+class ParentProfileViewSet(viewsets.ModelViewSet):
+    queryset = ParentProfile.objects.all()
+    serializer_class = ParentProfileSerializer
+    permission_classes = [IsAdminOrReadOnly, IsAuthenticated]
+
+class ClassesViewSet(viewsets.ModelViewSet):
+    queryset = Classes.objects.all()
+    serializer_class = ClassesSerializer
+    permission_classes = [IsAuthenticated]

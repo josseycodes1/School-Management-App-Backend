@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import AttendanceRecord, AttendanceStatus
 from accounts.serializers import StudentProfileSerializer, TeacherProfileSerializer
-from academics.serializers import ClassesSerializer
+from accounts.serializers import ClassesSerializer
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):
     student = StudentProfileSerializer(read_only=True)
