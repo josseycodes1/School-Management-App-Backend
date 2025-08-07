@@ -126,7 +126,7 @@ class LoginAPIView(APIView):
                 profile = StudentProfile.objects.get(user=user)
                 required_fields = [
                     'phone', 'address', 'gender',
-                    'birth_date', 'parent', 'class_level',
+                    'birth_date', 'parent_name', 'parent_name', 'class_level',
                     'photo'
                 ]
                 onboarding_complete = all(
@@ -301,8 +301,9 @@ class StudentOnboardingProgressView(APIView):
                     'phone': False,
                     'address': False,
                     'gender': False,
+                    'parent_name': False,   
+                    'parent_contact': False, 
                     'birth_date': False,
-                    'parent': False,
                     'class_level': False,
                     'photo': False,
                     'admission_number': False
