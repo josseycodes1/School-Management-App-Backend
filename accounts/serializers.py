@@ -92,19 +92,6 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at']
 
-class StudentProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    parent = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(role='parent'),
-        required=False,
-        allow_null=True
-    )
-    
-    class Meta:
-        model = StudentProfile
-        fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at']
-
 class ParentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     
@@ -150,6 +137,15 @@ class LessonCreateSerializer(serializers.ModelSerializer):
         model = Lesson
         fields = ['title', 'content', 'subject', 'date']
         
+        
+class StudentProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = StudentProfile
+        fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at']
+        
 
 class StudentOnboardingSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
@@ -162,29 +158,20 @@ class StudentOnboardingSerializer(serializers.ModelSerializer):
         fields = [
             'email', 'first_name', 'last_name', 
             'phone', 'address', 'gender', 'birth_date',
-            'photo', 'blood_type', 'parent', 'class_level',
-            'admission_number'
+            'photo', 'blood_type', 'parent_name', 'parent_contact',
+            'class_level', 'admission_number'
         ]
         extra_kwargs = {
             'gender': {'required': True},
             'birth_date': {'required': True},
-            'parent': {'required': True},
+            'parent_name': {'required': True},
+            'parent_contact': {'required': True},
             'class_level': {'required': True},
             'admission_number': {'required': True},
             'blood_type': {'required': False},
             'phone': {'required': True},
             'address': {'required': True},
         }
-
-    def validate_birth_date(self, value):
-        if value > datetime.now().date():
-            raise serializers.ValidationError("Birth date cannot be in the future")
-        return value
-
-    def validate_parent(self, value):
-        if value.role != User.UserRole.PARENT:
-            raise serializers.ValidationError("The specified user is not a parent")
-        return value
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
@@ -202,8 +189,8 @@ class StudentOnboardingSerializer(serializers.ModelSerializer):
         # Mark as onboarded when all required fields are filled
         required_fields = [
             'phone', 'address', 'gender',
-            'birth_date', 'parent', 'class_level',
-            'photo', 'admission_number'
+            'birth_date', 'parent_name', 'parent_contact',
+            'class_level', 'photo', 'admission_number'
         ]
         if all(getattr(instance, field) for field in required_fields):
             instance.is_onboarded = True
@@ -226,7 +213,8 @@ class StudentOnboardingProgressSerializer(serializers.ModelSerializer):
             'address': bool(obj.address),
             'gender': bool(obj.gender),
             'birth_date': bool(obj.birth_date),
-            'parent': bool(obj.parent_id),
+            'parent_name': bool(obj.parent_name),
+            'parent_contact': bool(obj.parent_contact),
             'class_level': bool(obj.class_level),
             'photo': bool(obj.photo),
             'admission_number': bool(obj.admission_number)

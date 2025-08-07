@@ -145,14 +145,9 @@ class TeacherProfile(ProfileMixin):
     is_principal = models.BooleanField(default=False)
 
 class StudentProfile(ProfileMixin):
-    parent = models.ForeignKey(
-        'User',  
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True,
-        limit_choices_to={"role": UserRole.PARENT},
-        related_name="children"
-    )
+    parent_name = models.CharField(max_length=100, blank=True, verbose_name="Parent/Guardian Name")
+    parent_contact = models.CharField(max_length=15, blank=True, verbose_name="Parent/Guardian Phone")
+    
     admission_number = models.CharField(max_length=20, unique=True)
     class_level = models.CharField(max_length=50, blank=True)
     academic_year = models.CharField(max_length=20, blank=True)
@@ -160,8 +155,8 @@ class StudentProfile(ProfileMixin):
     is_onboarded = models.BooleanField(default=False)
     photo = models.ImageField(
         upload_to='profile_photos/',
-        null=False,  # No longer nullable
-        blank=False,  # Not optional
+        null=False,
+        blank=False,
         verbose_name="Profile Photo"
     )
 
