@@ -83,7 +83,7 @@ class AdminProfileSerializer(serializers.ModelSerializer):
         model = AdminProfile
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at']
-
+              
 class TeacherProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     
@@ -91,16 +91,87 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
         model = TeacherProfile
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at']
-
-class ParentProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    
+class TeacherOnboardingSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', required=False)
+    last_name = serializers.CharField(source='user.last_name', required=False)
+    photo = serializers.ImageField(required=True)
     
     class Meta:
-        model = ParentProfile
-        fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at']
+        model = TeacherProfile
+        fields = [
+            'email', 'first_name', 'last_name',
+            'phone', 'address', 'gender', 'birth_date',
+            'photo', 'blood_type', 'subject_specialization',
+            'hire_date', 'qualifications', 'is_principal'
+        ]
+        extra_kwargs = {
+            'gender': {'required': True},
+            'birth_date': {'required': True},
+            'phone': {'required': True},
+            'address': {'required': True},
+            'subject_specialization': {'required': True},
+            'hire_date': {'required': True},
+            'photo': {'required': True}
+        }
+
+    def validate_birth_date(self, value):
+        if value > datetime.now().date():
+            raise serializers.ValidationError("Birth date cannot be in the future")
+        return value
+
+    def validate_hire_date(self, value):
+        if value > datetime.now().date():
+            raise serializers.ValidationError("Hire date cannot be in the future")
+        return value
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        user = instance.user
         
+        # Update user fields
+        for attr, value in user_data.items():
+            setattr(user, attr, value)
+        user.save()
         
+        # Update profile fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        return instance
+
+class TeacherOnboardingProgressSerializer(serializers.ModelSerializer):
+    progress = serializers.SerializerMethodField()
+    completed = serializers.SerializerMethodField()
+    required_fields = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TeacherProfile
+        fields = ['progress', 'completed', 'required_fields']
+
+    def get_required_fields(self, obj):
+        return {
+            'phone': bool(obj.phone),
+            'address': bool(obj.address),
+            'gender': bool(obj.gender),
+            'birth_date': bool(obj.birth_date),
+            'subject_specialization': bool(obj.subject_specialization),
+            'hire_date': bool(obj.hire_date),
+            'photo': bool(obj.photo)
+        }
+
+    def get_completed(self, obj):
+        required_fields = self.get_required_fields(obj)
+        return all(required_fields.values())
+
+    def get_progress(self, obj):
+        required_fields = self.get_required_fields(obj)
+        filled = sum(required_fields.values())
+        total = len(required_fields)
+        return int((filled / total) * 100) if total > 0 else 0
+
 class ClassesSerializer(serializers.ModelSerializer):
     teacher = TeacherProfileSerializer(read_only=True)
     
@@ -230,86 +301,14 @@ class StudentOnboardingProgressSerializer(serializers.ModelSerializer):
         total = len(required_fields)
         return int((filled / total) * 100) if total > 0 else 0
     
-class TeacherOnboardingSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(source='user.email', read_only=True)
-    first_name = serializers.CharField(source='user.first_name', required=False)
-    last_name = serializers.CharField(source='user.last_name', required=False)
-    photo = serializers.ImageField(required=True)
+
+class ParentProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
     
     class Meta:
-        model = TeacherProfile
-        fields = [
-            'email', 'first_name', 'last_name',
-            'phone', 'address', 'gender', 'birth_date',
-            'photo', 'blood_type', 'subject_specialization',
-            'hire_date', 'qualifications', 'is_principal'
-        ]
-        extra_kwargs = {
-            'gender': {'required': True},
-            'birth_date': {'required': True},
-            'phone': {'required': True},
-            'address': {'required': True},
-            'subject_specialization': {'required': True},
-            'hire_date': {'required': True},
-            'photo': {'required': True}
-        }
-
-    def validate_birth_date(self, value):
-        if value > datetime.now().date():
-            raise serializers.ValidationError("Birth date cannot be in the future")
-        return value
-
-    def validate_hire_date(self, value):
-        if value > datetime.now().date():
-            raise serializers.ValidationError("Hire date cannot be in the future")
-        return value
-
-    def update(self, instance, validated_data):
-        user_data = validated_data.pop('user', {})
-        user = instance.user
-        
-        # Update user fields
-        for attr, value in user_data.items():
-            setattr(user, attr, value)
-        user.save()
-        
-        # Update profile fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        
-        return instance
-
-class TeacherOnboardingProgressSerializer(serializers.ModelSerializer):
-    progress = serializers.SerializerMethodField()
-    completed = serializers.SerializerMethodField()
-    required_fields = serializers.SerializerMethodField()
-
-    class Meta:
-        model = TeacherProfile
-        fields = ['progress', 'completed', 'required_fields']
-
-    def get_required_fields(self, obj):
-        return {
-            'phone': bool(obj.phone),
-            'address': bool(obj.address),
-            'gender': bool(obj.gender),
-            'birth_date': bool(obj.birth_date),
-            'subject_specialization': bool(obj.subject_specialization),
-            'hire_date': bool(obj.hire_date),
-            'photo': bool(obj.photo)
-        }
-
-    def get_completed(self, obj):
-        required_fields = self.get_required_fields(obj)
-        return all(required_fields.values())
-
-    def get_progress(self, obj):
-        required_fields = self.get_required_fields(obj)
-        filled = sum(required_fields.values())
-        total = len(required_fields)
-        return int((filled / total) * 100) if total > 0 else 0
-    
+        model = ParentProfile
+        fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at']
 class ParentOnboardingSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', required=False)
