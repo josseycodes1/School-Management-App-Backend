@@ -33,6 +33,8 @@ from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.decorators import api_view
+from rest_framework.decorators import permission_classes
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -99,6 +101,16 @@ class UserViewSet(viewsets.ModelViewSet):
 
         except User.DoesNotExist:
             return Response({"error": "Invalid token or email"}, status=status.HTTP_400_BAD_REQUEST)
+        
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_counts(request):
+    data = {
+        'students': StudentProfile.objects.count(),
+        'teachers': TeacherProfile.objects.count(),
+        'parents': ParentProfile.objects.count(),
+    }
+    return Response(data)
 
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
@@ -283,7 +295,6 @@ class StudentOnboardingView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-
 class StudentOnboardingProgressView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -315,13 +326,11 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
     serializer_class = StudentProfileSerializer
     permission_classes = [IsAuthenticated, IsOnboardingStudentOrAdmin, IsOwnerOrAdmin]
 
-
     def get_queryset(self):
         user = self.request.user
-        if user.role == "admin":
+        if user.role in ["admin", "teacher", "parent"]: 
             return StudentProfile.objects.all()
         return StudentProfile.objects.filter(user=user)
-
 
 class SubjectViewSet(viewsets.ModelViewSet):
     queryset = Subject.objects.all()
@@ -480,3 +489,4 @@ class ClassesViewSet(viewsets.ModelViewSet):
     queryset = Classes.objects.all()
     serializer_class = ClassesSerializer
     permission_classes = [IsAuthenticated]
+    

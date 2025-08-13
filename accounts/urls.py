@@ -16,9 +16,12 @@ from .views import (
     TeacherOnboardingView,
     TeacherOnboardingProgressView,
     ParentOnboardingView,
-    ParentOnboardingProgressView
+    ParentOnboardingProgressView,
+    user_counts
+    
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from . import views
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
@@ -29,6 +32,7 @@ router.register(r'admins', AdminProfileViewSet, basename='admin')
 
 urlpatterns = [
     #Custom endpoints FIRST
+    path('user-counts/', views.user_counts, name='user-counts'),
     path('students/onboarding/', StudentOnboardingView.as_view(), name='student-onboarding'),
     path('students/onboarding/progress/', StudentOnboardingProgressView.as_view(), name='student-onboarding-progress'),
     path('teachers/onboarding/', TeacherOnboardingView.as_view(), name='teacher-onboarding'),
