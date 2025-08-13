@@ -7,13 +7,23 @@ from accounts.serializers import (
 )
 
 class AnnouncementAudienceSerializer(serializers.ModelSerializer):
-    student = StudentProfileSerializer(read_only=True)
-    teacher = TeacherProfileSerializer(read_only=True)
-    parent = ParentProfileSerializer(read_only=True)
-    
+    student_first_name = serializers.CharField(source='student.user.first_name', read_only=True)
+    student_last_name = serializers.CharField(source='student.user.last_name', read_only=True)
+
+    teacher_first_name = serializers.CharField(source='teacher.user.first_name', read_only=True)
+    teacher_last_name = serializers.CharField(source='teacher.user.last_name', read_only=True)
+
+    parent_first_name = serializers.CharField(source='parent.user.first_name', read_only=True)
+    parent_last_name = serializers.CharField(source='parent.user.last_name', read_only=True)
+
     class Meta:
         model = AnnouncementAudience
-        fields = ['id', 'announcement', 'student', 'teacher', 'parent']
+        fields = [
+            'id', 'announcement',
+            'student_first_name', 'student_last_name',
+            'teacher_first_name', 'teacher_last_name',
+            'parent_first_name', 'parent_last_name'
+        ]
         read_only_fields = ['announcement']
         
         
