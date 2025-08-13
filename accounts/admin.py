@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import User, AdminProfile, ParentProfile, TeacherProfile, StudentProfile
+from .models import Subject, Classes, Lesson
 
 class CustomUserAdmin(UserAdmin):
     list_display = ('email', 'first_name', 'last_name', 'role', 'is_active')
@@ -34,8 +35,6 @@ admin.site.register(AdminProfile, ProfileAdmin)
 admin.site.register(ParentProfile, ProfileAdmin)
 admin.site.register(TeacherProfile, ProfileAdmin)
 admin.site.register(StudentProfile, ProfileAdmin)
-
-from .models import Subject, Classes, Lesson
 
 @admin.register(Classes)
 class ClassesAdmin(admin.ModelAdmin):
