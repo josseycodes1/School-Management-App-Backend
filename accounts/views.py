@@ -102,15 +102,27 @@ class UserViewSet(viewsets.ModelViewSet):
         except User.DoesNotExist:
             return Response({"error": "Invalid token or email"}, status=status.HTTP_400_BAD_REQUEST)
         
+
+#usercount on admin dashboard
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def user_counts(request):
+    students_count = StudentProfile.objects.count()
+    teachers_count = TeacherProfile.objects.count()
+    parents_count = ParentProfile.objects.count()
+
+    male_students = StudentProfile.objects.filter(gender="M").count()
+    female_students = StudentProfile.objects.filter(gender="F").count()
+
     data = {
-        'students': StudentProfile.objects.count(),
-        'teachers': TeacherProfile.objects.count(),
-        'parents': ParentProfile.objects.count(),
+        "students": students_count,
+        "teachers": teachers_count,
+        "parents": parents_count,
+        "male_students": male_students,
+        "female_students": female_students,
     }
     return Response(data)
+
 
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
