@@ -85,12 +85,26 @@ class AdminProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
               
 class TeacherProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    
+    user = UserSerializer()
+
     class Meta:
         model = TeacherProfile
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at']
+
+    def update(self, instance, validated_data):
+        # Pop user data if present
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            for attr, value in user_data.items():
+                if attr == "password":
+                    instance.user.set_password(value)
+                else:
+                    setattr(instance.user, attr, value)
+            instance.user.save()
+
+        return super().update(instance, validated_data)
+
     
 class TeacherOnboardingSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)

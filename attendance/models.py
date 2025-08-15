@@ -19,7 +19,7 @@ class AttendanceRecord(models.Model):
         choices=AttendanceStatus.choices,
         default=AttendanceStatus.PRESENT
     )
-    recorded_by = models.ForeignKey(TeacherProfile, on_delete=models.SET_NULL, null=True)  # Which teacher marked it
+    recorded_by = models.ForeignKey(TeacherProfile, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

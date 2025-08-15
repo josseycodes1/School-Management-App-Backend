@@ -54,6 +54,12 @@ INSTALLED_APPS = [
     'drf_spectacular',
 ]
 
+# Add to your settings.py
+IGNORED_APPS = ['academics']  # Add any other deleted apps here
+
+# Modify INSTALLED_APPS to filter out ignored apps
+INSTALLED_APPS = [app for app in INSTALLED_APPS if app not in IGNORED_APPS]
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -167,7 +173,7 @@ FRONTEND_URL = 'http://localhost:3000'
 # JWT settings
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=45),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,

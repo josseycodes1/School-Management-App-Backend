@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.utils import timezone
+from django.db import connection
 from .models import User, TeacherProfile, StudentProfile, ParentProfile, AdminProfile, Classes, Subject, Lesson
 from .serializers import (
     UserSerializer, 
@@ -35,6 +36,7 @@ from rest_framework import status
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
+from django.db import transaction
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -102,7 +104,6 @@ class UserViewSet(viewsets.ModelViewSet):
         except User.DoesNotExist:
             return Response({"error": "Invalid token or email"}, status=status.HTTP_400_BAD_REQUEST)
         
-
 #usercount on admin dashboard
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -122,7 +123,6 @@ def user_counts(request):
         "female_students": female_students,
     }
     return Response(data)
-
 
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
@@ -171,8 +171,7 @@ class LoginAPIView(APIView):
                 "onboarding_complete": onboarding_complete
             }
         }, status=status.HTTP_200_OK)
-
-        
+     
 class PasswordResetView(APIView):
     permission_classes = [AllowAny]
 
@@ -377,7 +376,15 @@ class AdminProfileViewSet(viewsets.ModelViewSet):
 class TeacherProfileViewSet(viewsets.ModelViewSet):
     queryset = TeacherProfile.objects.all()
     serializer_class = TeacherProfileSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            # Allow any authenticated user to view
+            permission_classes = [IsAuthenticated]
+        else:
+            # Only admin can create/update/delete
+            permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+        return [permission() for permission in permission_classes]
     
 class TeacherOnboardingView(APIView):
     parser_classes = [MultiPartParser, FormParser]

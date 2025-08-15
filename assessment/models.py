@@ -13,9 +13,9 @@ class Grade(models.Model):
 # Exam model
 class Exam(models.Model):
     title = models.CharField(max_length=100)  # Name of the exam e.g., "First Term Math Exam"
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)  # Related subject
-    teacher = models.ForeignKey(TeacherProfile, on_delete=models.CASCADE)  # Who created/owns this exam
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE)  # Grade this exam is meant for
+    subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True)  # Related subject
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.SET_NULL, null=True, blank=True)  # Who created/owns this exam
+    grade = models.ForeignKey(Grade, on_delete=models.SET_NULL, null=True, blank=True)  # Grade this exam is meant for
     exam_date = models.DateField()  # Date the exam is scheduled
     created_at = models.DateTimeField(auto_now_add=True)  # Automatically adds creation timestamp
 
@@ -26,9 +26,9 @@ class Exam(models.Model):
 class Assignment(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField()
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-    teacher = models.ForeignKey(TeacherProfile, on_delete=models.CASCADE)
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE)
+    subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True)
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.SET_NULL, null=True, blank=True )
+    grade = models.ForeignKey(Grade, on_delete=models.SET_NULL, null=True, blank=True)
     due_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -37,9 +37,9 @@ class Assignment(models.Model):
 
 # Result model
 class Result(models.Model):
-    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)
-    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, null=True, blank=True)
-    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, null=True, blank=True)
+    student = models.ForeignKey(StudentProfile, on_delete=models.SET_NULL, null=True, blank=True)
+    exam = models.ForeignKey(Exam, on_delete=models.SET_NULL, null=True, blank=True)
+    assignment = models.ForeignKey(Assignment, on_delete=models.SET_NULL, null=True, blank=True)
     score = models.DecimalField(max_digits=5, decimal_places=2)  # allows scores like 98.50
     graded_on = models.DateTimeField(auto_now_add=True)
 

@@ -1,5 +1,5 @@
 import uuid
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
 from datetime import timedelta
@@ -143,6 +143,52 @@ class TeacherProfile(ProfileMixin):
     hire_date = models.DateField(null=True, blank=True)
     qualifications = models.TextField(blank=True)
     is_principal = models.BooleanField(default=False)
+
+    def delete(self, *args, **kwargs):
+        """
+        Comprehensive deletion method that handles all possible relationships
+        """
+        # Import all related models at the top of the file ideally
+        from assessment.models import Exam, Assignment, Result
+        from attendance.models import AttendanceRecord
+        from accounts.models import Classes, Subject, Lesson
+        from announcements.models import AnnouncementAudience
+        from events.models import EventParticipant
+
+        with transaction.atomic():  # Ensure all operations succeed or fail together
+            # Nullify all direct relationships
+            Classes.objects.filter(teacher=self).update(teacher=None)
+            Subject.objects.filter(teacher=self).update(teacher=None)
+            Exam.objects.filter(teacher=self).update(teacher=None)
+            Assignment.objects.filter(teacher=self).update(teacher=None)
+            AttendanceRecord.objects.filter(recorded_by=self).update(recorded_by=None)
+            
+            # Handle indirect relationships
+            lessons = Lesson.objects.filter(subject__teacher=self)
+            for lesson in lessons:
+                lesson.subject.teacher = None
+                lesson.subject.save()
+            
+            results = Result.objects.filter(
+                models.Q(exam__teacher=self) | 
+                models.Q(assignment__teacher=self)
+            )
+            for result in results:
+                if result.exam and result.exam.teacher == self:
+                    result.exam.teacher = None
+                    result.exam.save()
+                if result.assignment and result.assignment.teacher == self:
+                    result.assignment.teacher = None
+                    result.assignment.save()
+            
+            # Delete relationship records
+            AnnouncementAudience.objects.filter(teacher=self).delete()
+            EventParticipant.objects.filter(teacher=self).delete()
+            
+            # Finally delete the teacher and user
+            user = self.user
+            super().delete(*args, **kwargs)
+            user.delete()
 
 class StudentProfile(ProfileMixin):
     parent_name = models.CharField(max_length=100, blank=True, verbose_name="Parent/Guardian Name")
