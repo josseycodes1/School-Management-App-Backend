@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'attendance',
     'events',
     'announcements',
+    'core.apps.CoreConfig',
     
     'rest_framework',
     'rest_framework.authtoken',
