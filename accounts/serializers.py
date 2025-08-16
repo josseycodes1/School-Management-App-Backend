@@ -90,6 +90,19 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
         model = TeacherProfile
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at']
+        
+    def create(self, validated_data):
+        user_data = validated_data.pop("user")
+        # Create user first
+        password = user_data.pop("password", None)
+        user = User.objects.create(**user_data)
+        if password:
+            user.set_password(password)
+            user.save()
+
+        # Create teacher profile
+        teacher_profile = TeacherProfile.objects.create(user=user, **validated_data)
+        return teacher_profile
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', None)
@@ -223,8 +236,21 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentProfile
-        fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at']
+        fields = "__all__"
+        read_only_fields = ["created_at", "updated_at"]
+
+    def create(self, validated_data):
+        user_data = validated_data.pop("user")
+        # Create user first
+        password = user_data.pop("password", None)
+        user = User.objects.create(**user_data)
+        if password:
+            user.set_password(password)
+            user.save()
+
+        # Create student profile
+        student_profile = StudentProfile.objects.create(user=user, **validated_data)
+        return student_profile
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop("user", None)
