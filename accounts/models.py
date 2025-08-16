@@ -3,6 +3,11 @@ from django.db import models, transaction
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
 from datetime import timedelta
+from assessment.models import Exam, Assignment, Result
+from attendance.models import AttendanceRecord
+from accounts.models import Classes, Subject, Lesson
+from announcements.models import AnnouncementAudience
+from events.models import EventParticipant
 
 class Gender(models.TextChoices):
     MALE = "M", "Male"
@@ -145,18 +150,8 @@ class TeacherProfile(ProfileMixin):
     is_principal = models.BooleanField(default=False)
 
     def delete(self, *args, **kwargs):
-        """
-        Comprehensive deletion method that handles all possible relationships
-        """
-        # Import all related models at the top of the file ideally
-        from assessment.models import Exam, Assignment, Result
-        from attendance.models import AttendanceRecord
-        from accounts.models import Classes, Subject, Lesson
-        from announcements.models import AnnouncementAudience
-        from events.models import EventParticipant
 
-        with transaction.atomic():  # Ensure all operations succeed or fail together
-            # Nullify all direct relationships
+        with transaction.atomic(): 
             Classes.objects.filter(teacher=self).update(teacher=None)
             Subject.objects.filter(teacher=self).update(teacher=None)
             Exam.objects.filter(teacher=self).update(teacher=None)
@@ -206,9 +201,8 @@ class StudentProfile(ProfileMixin):
         verbose_name="Profile Photo"
     )
    
-# Classes Model (e.g., Primary 1, JSS2)
 class AcademicYear(models.Model):
-    name = models.CharField(max_length=20, unique=True)  # "2024/2025"
+    name = models.CharField(max_length=20, unique=True)  
     current = models.BooleanField(default=False)
     
     def __str__(self):
@@ -217,7 +211,7 @@ class AcademicYear(models.Model):
 class Classes(models.Model):
     name = models.CharField(max_length=50, unique=True)
     teacher = models.ForeignKey(
-        'accounts.TeacherProfile',  # Changed to string reference
+        'accounts.TeacherProfile',  
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -231,14 +225,14 @@ class Classes(models.Model):
 class Subject(models.Model):
     name = models.CharField(max_length=100)
     teacher = models.ForeignKey(
-        'accounts.TeacherProfile',  # Changed to string reference
+        'accounts.TeacherProfile', 
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='subjects'
     )
     assigned_class = models.ForeignKey(
-        'Classes',  # Self-reference
+        'Classes', 
         on_delete=models.CASCADE,
         related_name='subjects'
     )

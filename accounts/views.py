@@ -26,7 +26,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .permissions import IsAdminOrReadOnly, IsOnboardingStudentOrAdmin, IsOwnerOrAdmin
+from .permissions import IsAdminOrReadOnly, IsStudentOnboarding
 from django.core.mail import send_mail
 from django.conf import settings
 from datetime import timedelta
@@ -335,14 +335,14 @@ class StudentOnboardingProgressView(APIView):
 class StudentProfileViewSet(viewsets.ModelViewSet):
     queryset = StudentProfile.objects.all()
     serializer_class = StudentProfileSerializer
-    permission_classes = [IsAuthenticated, IsOnboardingStudentOrAdmin, IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly | IsStudentOnboarding]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ["admin", "teacher", "parent"]: 
+        if user.role == "admin":
             return StudentProfile.objects.all()
         return StudentProfile.objects.filter(user=user)
-
+    
 class SubjectViewSet(viewsets.ModelViewSet):
     queryset = Subject.objects.all()
     permission_classes = [IsAuthenticated]

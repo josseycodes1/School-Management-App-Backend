@@ -39,7 +39,6 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         try:
-            # Create user with all fields including verification
             user = User.objects.create_user(
                 email=validated_data['email'],
                 password=validated_data['password'],
@@ -93,7 +92,6 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
     def update(self, instance, validated_data):
-        # Pop user data if present
         user_data = validated_data.pop('user', None)
         if user_data:
             for attr, value in user_data.items():
@@ -104,8 +102,7 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
             instance.user.save()
 
         return super().update(instance, validated_data)
-
-    
+   
 class TeacherOnboardingSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', required=False)
@@ -211,7 +208,6 @@ class LessonSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'content', 'subject', 'date', 'created_at']
         read_only_fields = ['created_at']
 
-# For creating/updating (simplified versions)
 class SubjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subject
@@ -221,16 +217,32 @@ class LessonCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
         fields = ['title', 'content', 'subject', 'date']
-        
-        
+            
 class StudentProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    
+    user = UserSerializer(read_only=False)
+
     class Meta:
         model = StudentProfile
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at']
-        
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop("user", None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if user_data:
+            user = instance.user
+            if "password" in user_data:
+                user.set_password(user_data["password"])
+                user_data.pop("password")
+            for attr, value in user_data.items():
+                setattr(user, attr, value)
+            user.save()
+
+        return instance
 
 class StudentOnboardingSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
@@ -262,16 +274,13 @@ class StudentOnboardingSerializer(serializers.ModelSerializer):
         user_data = validated_data.pop('user', {})
         user = instance.user
         
-        # Update user fields if provided
         for attr, value in user_data.items():
             setattr(user, attr, value)
         user.save()
         
-        # Update profile fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         
-        # Mark as onboarded when all required fields are filled
         required_fields = [
             'phone', 'address', 'gender',
             'birth_date', 'parent_name', 'parent_contact',
@@ -315,7 +324,6 @@ class StudentOnboardingProgressSerializer(serializers.ModelSerializer):
         total = len(required_fields)
         return int((filled / total) * 100) if total > 0 else 0
     
-
 class ParentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     

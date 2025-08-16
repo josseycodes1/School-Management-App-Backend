@@ -1,22 +1,22 @@
 # assessment/views.py
 from rest_framework import viewsets
+from django.db.models import Q
 from .models import Grade, Exam, Assignment, Result
 from .serializers import GradeSerializer, ExamSerializer, AssignmentSerializer, ResultSerializer
-from accounts.permissions import IsTeacher, IsStudent, IsAdminOrReadOnly
-from django.db.models import Q  # Add this import at the top
-from rest_framework import viewsets
-from .models import Result
-from .serializers import ResultSerializer
-from accounts.permissions import IsAdminOrReadOnly
+from accounts.permissions import IsAdminOrReadOnly, RolePermission 
+
 
 class GradeViewSet(viewsets.ModelViewSet):
     queryset = Grade.objects.all()
     serializer_class = GradeSerializer
-    permission_classes = [IsAdminOrReadOnly]  # Teachers can edit, others can view
+    permission_classes = [IsAdminOrReadOnly]
+
 
 class ExamViewSet(viewsets.ModelViewSet):
     serializer_class = ExamSerializer
-    permission_classes = [IsTeacher]  # Only teachers can access
+    permission_classes = [RolePermission] 
+    
+    required_roles = ["teacher"] 
     
     def get_queryset(self):
         queryset = Exam.objects.all()
@@ -27,9 +27,12 @@ class ExamViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(teacher=self.request.user.teacher_profile)
 
+
 class AssignmentViewSet(viewsets.ModelViewSet):
     serializer_class = AssignmentSerializer
-    permission_classes = [IsTeacher]  # Only teachers can access
+    permission_classes = [RolePermission]  
+    
+    required_roles = ["teacher"]  
     
     def get_queryset(self):
         queryset = Assignment.objects.all()
@@ -40,9 +43,12 @@ class AssignmentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(teacher=self.request.user.teacher_profile)
 
+
 class ResultViewSet(viewsets.ModelViewSet):
     serializer_class = ResultSerializer
-    permission_classes = [IsTeacher | IsStudent]  # Both can access
+    permission_classes = [RolePermission] 
+    
+    required_roles = ["teacher", "student"]  
     
     def get_queryset(self):
         queryset = Result.objects.all()
