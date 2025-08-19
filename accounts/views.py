@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.utils import timezone
@@ -10,17 +10,16 @@ from .serializers import (
     StudentProfileSerializer, 
     ParentProfileSerializer, 
     AdminProfileSerializer,
-    ClassesSerializer,
     SubjectSerializer,
     LessonSerializer,
-    SubjectCreateSerializer,
-    LessonCreateSerializer,
     StudentOnboardingSerializer,
     StudentOnboardingProgressSerializer,
     TeacherOnboardingProgressSerializer,
     TeacherOnboardingSerializer,
     ParentOnboardingSerializer,
-    ParentOnboardingProgressSerializer
+    ParentOnboardingProgressSerializer,
+    ClassesReadSerializer, 
+    ClassesWriteSerializer
 )
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -349,7 +348,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
-            return SubjectCreateSerializer
+            return SubjectSerializer
         return SubjectSerializer
 
 class LessonViewSet(viewsets.ModelViewSet):
@@ -358,7 +357,7 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
-            return LessonCreateSerializer
+            return LessonSerializer
         return LessonSerializer
 
     def get_queryset(self):
@@ -504,8 +503,17 @@ class ParentOnboardingProgressView(APIView):
                 }
             })
 
+class IsAdminOrReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user and request.user.is_staff
+
 class ClassesViewSet(viewsets.ModelViewSet):
-    queryset = Classes.objects.all()
-    serializer_class = ClassesSerializer
-    permission_classes = [IsAuthenticated]
+    queryset = Classes.objects.all().select_related('teacher__user')
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
     
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return ClassesWriteSerializer
+        return ClassesReadSerializer

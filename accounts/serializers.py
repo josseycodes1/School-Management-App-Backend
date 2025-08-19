@@ -74,18 +74,15 @@ class UserSerializer(serializers.ModelSerializer):
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to send verification email: {e}")
-
 class AdminProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     
     class Meta:
         model = AdminProfile
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at']
-              
+        read_only_fields = ['created_at', 'updated_at']         
 class TeacherProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer()
-
     class Meta:
         model = TeacherProfile
         fields = '__all__'
@@ -114,8 +111,7 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
                     setattr(instance.user, attr, value)
             instance.user.save()
 
-        return super().update(instance, validated_data)
-   
+        return super().update(instance, validated_data) 
 class TeacherOnboardingSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', required=False)
@@ -165,7 +161,6 @@ class TeacherOnboardingSerializer(serializers.ModelSerializer):
         instance.save()
         
         return instance
-
 class TeacherOnboardingProgressSerializer(serializers.ModelSerializer):
     progress = serializers.SerializerMethodField()
     completed = serializers.SerializerMethodField()
@@ -195,8 +190,8 @@ class TeacherOnboardingProgressSerializer(serializers.ModelSerializer):
         filled = sum(required_fields.values())
         total = len(required_fields)
         return int((filled / total) * 100) if total > 0 else 0
-
-class ClassesSerializer(serializers.ModelSerializer):
+class ClassesReadSerializer(serializers.ModelSerializer):
+    """Serializer for READ operations - includes nested teacher details"""
     teacher = TeacherProfileSerializer(read_only=True)
     
     class Meta:
@@ -204,14 +199,80 @@ class ClassesSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'teacher', 'created_at']
         read_only_fields = ['created_at']
 
+class ClassesWriteSerializer(serializers.ModelSerializer):
+    """Serializer for WRITE operations - accepts teacher ID"""
+    teacher_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    
+    class Meta:
+        model = Classes
+        fields = ['id', 'name', 'teacher_id', 'created_at']
+        read_only_fields = ['created_at']
+    
+    def create(self, validated_data):
+        teacher_id = validated_data.pop('teacher_id', None)
+        teacher = None
+        
+        if teacher_id:
+            try:
+                teacher = TeacherProfile.objects.get(id=teacher_id)
+            except TeacherProfile.DoesNotExist:
+                raise serializers.ValidationError({
+                    'teacher_id': f"Teacher with ID {teacher_id} does not exist."
+                })
+        
+        return Classes.objects.create(teacher=teacher, **validated_data)
+    
+    def update(self, instance, validated_data):
+        teacher_id = validated_data.pop('teacher_id', None)
+        teacher = None
+        
+        if teacher_id is not None:  # Handle both setting and nullifying
+            if teacher_id:
+                try:
+                    teacher = TeacherProfile.objects.get(id=teacher_id)
+                except TeacherProfile.DoesNotExist:
+                    raise serializers.ValidationError({
+                        'teacher_id': f"Teacher with ID {teacher_id} does not exist."
+                    })
+            # If teacher_id is null/empty, teacher remains None
+        
+        instance.name = validated_data.get('name', instance.name)
+        instance.teacher = teacher
+        instance.save()
+        return instance
+
 class SubjectSerializer(serializers.ModelSerializer):
     teacher = TeacherProfileSerializer(read_only=True)
-    assigned_class = ClassesSerializer(read_only=True)
     
     class Meta:
         model = Subject
         fields = ['id', 'name', 'teacher', 'assigned_class', 'created_at']
         read_only_fields = ['created_at']
+        
+    def create(self, validated_data):
+        user_data = validated_data.pop("user")
+        # Create user first
+        password = user_data.pop("password", None)
+        user = User.objects.create(**user_data)
+        if password:
+            user.set_password(password)
+            user.save()
+            
+         # Create teacher profile
+        teacher_profile = TeacherProfile.objects.create(user=user, **validated_data)
+        return teacher_profile
+    
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            for attr, value in user_data.items():
+                if attr == "password":
+                    instance.user.set_password(value)
+                else:
+                    setattr(instance.user, attr, value)
+            instance.user.save()
+
+        return super().update(instance, validated_data) 
 
 class LessonSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
@@ -220,17 +281,42 @@ class LessonSerializer(serializers.ModelSerializer):
         model = Lesson
         fields = ['id', 'title', 'content', 'subject', 'date', 'created_at']
         read_only_fields = ['created_at']
-
-class SubjectCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Subject
-        fields = ['name', 'teacher', 'assigned_class']
-
-class LessonCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Lesson
-        fields = ['title', 'content', 'subject', 'date']
+        
+    def create(self, validated_data):
+        user_data = validated_data.pop("user")
+        # Create user first
+        password = user_data.pop("password", None)
+        user = User.objects.create(**user_data)
+        if password:
+            user.set_password(password)
+            user.save()
             
+         # Create teacher profile
+        teacher_profile = TeacherProfile.objects.create(user=user, **validated_data)
+        return teacher_profile
+    
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            for attr, value in user_data.items():
+                if attr == "password":
+                    instance.user.set_password(value)
+                else:
+                    setattr(instance.user, attr, value)
+            instance.user.save()
+
+        return super().update(instance, validated_data) 
+
+        
+        
+# class SubjectCreateSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Subject
+#         fields = ['name', 'teacher', 'assigned_class']
+# class LessonCreateSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Lesson
+#         fields = ['title', 'content', 'subject', 'date'] 
 class StudentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=False)
 
@@ -269,7 +355,6 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             user.save()
 
         return instance
-
 class StudentOnboardingSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', required=False)
@@ -317,7 +402,6 @@ class StudentOnboardingSerializer(serializers.ModelSerializer):
         
         instance.save()
         return instance
-
 class StudentOnboardingProgressSerializer(serializers.ModelSerializer):
     progress = serializers.SerializerMethodField()
     completed = serializers.SerializerMethodField()
@@ -349,14 +433,44 @@ class StudentOnboardingProgressSerializer(serializers.ModelSerializer):
         filled = sum(required_fields.values())
         total = len(required_fields)
         return int((filled / total) * 100) if total > 0 else 0
-    
 class ParentProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = UserSerializer()
     
     class Meta:
         model = ParentProfile
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at']
+        
+    def create(self, validated_data):
+        user_data = validated_data.pop("user")
+        # Create user first
+        password = user_data.pop("password", None)
+        user = User.objects.create(**user_data)
+        if password:
+            user.set_password(password)
+            user.save()
+            
+        # Create parent profile
+        parent_profile = ParentProfile.objects.create(user=user, **validated_data)
+        return parent_profile
+    
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop("user", None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if user_data:
+            user = instance.user
+            if "password" in user_data:
+                user.set_password(user_data["password"])
+                user_data.pop("password")
+            for attr, value in user_data.items():
+                setattr(user, attr, value)
+            user.save()
+
+        return instance
 class ParentOnboardingSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', required=False)
@@ -400,7 +514,6 @@ class ParentOnboardingSerializer(serializers.ModelSerializer):
         instance.save()
         
         return instance
-
 class ParentOnboardingProgressSerializer(serializers.ModelSerializer):
     progress = serializers.SerializerMethodField()
     completed = serializers.SerializerMethodField()

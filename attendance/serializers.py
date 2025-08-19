@@ -1,11 +1,11 @@
 from rest_framework import serializers
 from .models import AttendanceRecord, AttendanceStatus
 from accounts.serializers import StudentProfileSerializer, TeacherProfileSerializer
-from accounts.serializers import ClassesSerializer
+from accounts.serializers import ClassesReadSerializer
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):
     student = StudentProfileSerializer(read_only=True)
-    class_ref = ClassesSerializer(read_only=True)
+    class_ref = ClassesReadSerializer(read_only=True)
     recorded_by = TeacherProfileSerializer(read_only=True)
     status = serializers.ChoiceField(choices=AttendanceStatus.choices)
 
