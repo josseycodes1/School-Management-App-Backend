@@ -241,41 +241,52 @@ class ClassesWriteSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-class SubjectSerializer(serializers.ModelSerializer):
+class SubjectReadSerializer(serializers.ModelSerializer):
+    """Serializer for READ operations - includes nested teacher details"""
     teacher = TeacherProfileSerializer(read_only=True)
+    assigned_class_name = serializers.CharField(source='assigned_class.name', read_only=True)
     
     class Meta:
         model = Subject
-        fields = ['id', 'name', 'teacher', 'assigned_class', 'created_at']
+        fields = ['id', 'name', 'teacher', 'assigned_class', 'assigned_class_name', 'created_at']
         read_only_fields = ['created_at']
-        
-    def create(self, validated_data):
-        user_data = validated_data.pop("user")
-        # Create user first
-        password = user_data.pop("password", None)
-        user = User.objects.create(**user_data)
-        if password:
-            user.set_password(password)
-            user.save()
-            
-         # Create teacher profile
-        teacher_profile = TeacherProfile.objects.create(user=user, **validated_data)
-        return teacher_profile
-    
-    def update(self, instance, validated_data):
-        user_data = validated_data.pop('user', None)
-        if user_data:
-            for attr, value in user_data.items():
-                if attr == "password":
-                    instance.user.set_password(value)
-                else:
-                    setattr(instance.user, attr, value)
-            instance.user.save()
 
-        return super().update(instance, validated_data) 
+class SubjectWriteSerializer(serializers.ModelSerializer):
+    """Serializer for WRITE operations - accepts teacher ID and class ID"""
+    teacher_id = serializers.PrimaryKeyRelatedField(
+        queryset=TeacherProfile.objects.all(),
+        source='teacher',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
+    
+    class Meta:
+        model = Subject
+        fields = ['id', 'name', 'teacher_id', 'assigned_class', 'created_at']
+        read_only_fields = ['created_at']
+    
+    def validate(self, data):
+        """Validate that the subject name is unique within the same class"""
+        name = data.get('name')
+        assigned_class = data.get('assigned_class')
+        
+        if name and assigned_class:
+            # Check if subject with same name already exists in this class
+            existing_subject = Subject.objects.filter(
+                name=name, 
+                assigned_class=assigned_class
+            ).exclude(id=self.instance.id if self.instance else None).exists()
+            
+            if existing_subject:
+                raise serializers.ValidationError({
+                    'name': 'A subject with this name already exists in this class.'
+                })
+        
+        return data
 
 class LessonSerializer(serializers.ModelSerializer):
-    subject = SubjectSerializer(read_only=True)
+    subject = SubjectWriteSerializer(read_only=True)
     
     class Meta:
         model = Lesson

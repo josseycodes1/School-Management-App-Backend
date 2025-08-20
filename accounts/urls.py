@@ -17,7 +17,8 @@ from .views import (
     TeacherOnboardingProgressView,
     ParentOnboardingView,
     ParentOnboardingProgressView,
-    ClassesViewSet
+    ClassesViewSet,
+    SubjectViewSet
     
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -30,6 +31,10 @@ router.register(r'students', StudentProfileViewSet, basename='student')
 router.register(r'parents', ParentProfileViewSet, basename='parent')
 router.register(r'admins', AdminProfileViewSet, basename='admin')
 router.register(r'classes', ClassesViewSet, basename='classes')
+router.register(r'subjects', SubjectViewSet, basename='subject')
+# GET /api/accounts/subjects/by_class/?class_id=1
+# GET /api/accounts/subjects/my_subjects/
+
 
 urlpatterns = [
     #Custom endpoints FIRST

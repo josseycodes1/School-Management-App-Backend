@@ -1,7 +1,7 @@
 
 from rest_framework import serializers
 from .models import Grade, Exam, Assignment, Result
-from accounts.serializers import SubjectSerializer
+from accounts.serializers import SubjectWriteSerializer
 from accounts.serializers import TeacherProfileSerializer, StudentProfileSerializer
 
 class GradeSerializer(serializers.ModelSerializer):
@@ -10,7 +10,7 @@ class GradeSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ExamSerializer(serializers.ModelSerializer):
-    subject = SubjectSerializer(read_only=True)
+    subject = SubjectWriteSerializer(read_only=True)
     teacher = TeacherProfileSerializer(read_only=True)
     grade = GradeSerializer(read_only=True)
     
@@ -24,7 +24,7 @@ class ExamSerializer(serializers.ModelSerializer):
         }
 
 class AssignmentSerializer(serializers.ModelSerializer):
-    subject = SubjectSerializer(read_only=True)
+    subject = SubjectWriteSerializer(read_only=True)
     teacher = TeacherProfileSerializer(read_only=True)
     grade = GradeSerializer(read_only=True)
     

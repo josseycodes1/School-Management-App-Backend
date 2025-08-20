@@ -10,7 +10,6 @@ from .serializers import (
     StudentProfileSerializer, 
     ParentProfileSerializer, 
     AdminProfileSerializer,
-    SubjectSerializer,
     LessonSerializer,
     StudentOnboardingSerializer,
     StudentOnboardingProgressSerializer,
@@ -19,7 +18,9 @@ from .serializers import (
     ParentOnboardingSerializer,
     ParentOnboardingProgressSerializer,
     ClassesReadSerializer, 
-    ClassesWriteSerializer
+    ClassesWriteSerializer,
+    SubjectReadSerializer,
+    SubjectWriteSerializer
 )
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -343,13 +344,53 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
         return StudentProfile.objects.filter(user=user)
     
 class SubjectViewSet(viewsets.ModelViewSet):
-    queryset = Subject.objects.all()
-    permission_classes = [IsAuthenticated]
-
+    queryset = Subject.objects.all().select_related('teacher__user', 'assigned_class')
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
+    
     def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
-            return SubjectSerializer
-        return SubjectSerializer
+        """Use appropriate serializer based on action"""
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return SubjectWriteSerializer
+        return SubjectReadSerializer
+    
+    def get_queryset(self):
+        """Filter subjects based on user role"""
+        queryset = super().get_queryset()
+        
+        # If user is a teacher, only show subjects they teach
+        if hasattr(self.request.user, 'teacher_profile'):
+            return queryset.filter(teacher=self.request.user.teacher_profile)
+        
+        # If user is a student, show subjects from their class
+        if hasattr(self.request.user, 'student_profile') and self.request.user.student_profile.class_level:
+            return queryset.filter(assigned_class=self.request.user.student_profile.class_level)
+        
+        return queryset
+    
+    @action(detail=False, methods=['get'])
+    def by_class(self, request):
+        """Get subjects by class ID"""
+        class_id = request.query_params.get('class_id')
+        if not class_id:
+            return Response(
+                {'error': 'class_id parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        subjects = Subject.objects.filter(assigned_class_id=class_id)
+        serializer = self.get_serializer(subjects, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def my_subjects(self, request):
+        """Get subjects for the current teacher"""
+        if hasattr(request.user, 'teacher_profile'):
+            subjects = Subject.objects.filter(teacher=request.user.teacher_profile)
+            serializer = self.get_serializer(subjects, many=True)
+            return Response(serializer.data)
+        return Response([], status=status.HTTP_200_OK)
+    
+    
 
 class LessonViewSet(viewsets.ModelViewSet):
     queryset = Lesson.objects.all()
