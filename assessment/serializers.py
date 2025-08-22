@@ -1,15 +1,16 @@
 
 from rest_framework import serializers
 from .models import Grade, Exam, Assignment, Result
+from accounts.models import TeacherProfile, Subject
 from accounts.serializers import SubjectWriteSerializer
-from accounts.serializers import TeacherProfileSerializer, StudentProfileSerializer
+from accounts.serializers import TeacherProfileSerializer, StudentProfileSerializer, SubjectWriteSerializer
 
 class GradeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Grade
         fields = '__all__'
 
-class ExamSerializer(serializers.ModelSerializer):
+class ExamReadSerializer(serializers.ModelSerializer):
     subject = SubjectWriteSerializer(read_only=True)
     teacher = TeacherProfileSerializer(read_only=True)
     grade = GradeSerializer(read_only=True)
@@ -17,12 +18,25 @@ class ExamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
         fields = '__all__'
-        extra_kwargs = {
-            'teacher': {'required': True},
-            'subject': {'required': True},
-            'grade': {'required': True}
-        }
 
+class ExamWriteSerializer(serializers.ModelSerializer):
+    # Use PrimaryKeyRelatedField for write operations
+    subject = serializers.PrimaryKeyRelatedField(
+        queryset=Subject.objects.all(),
+        required=True
+    )
+    teacher = serializers.PrimaryKeyRelatedField(
+        queryset=TeacherProfile.objects.all(),
+        required=True
+    )
+    grade = serializers.PrimaryKeyRelatedField(
+        queryset=Grade.objects.all(),
+        required=True
+    )
+    
+    class Meta:
+        model = Exam
+        fields = ['title', 'subject', 'teacher', 'grade', 'exam_date']
 class AssignmentSerializer(serializers.ModelSerializer):
     subject = SubjectWriteSerializer(read_only=True)
     teacher = TeacherProfileSerializer(read_only=True)
@@ -39,7 +53,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
 
 class ResultSerializer(serializers.ModelSerializer):
     student = StudentProfileSerializer(read_only=True)
-    exam = ExamSerializer(read_only=True)
+    exam = ExamWriteSerializer(read_only=True)
     assignment = AssignmentSerializer(read_only=True)
     
     class Meta:

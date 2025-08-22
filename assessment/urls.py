@@ -14,6 +14,7 @@ router.register(r'exams', ExamViewSet, basename='exam')
 router.register(r'assignments', AssignmentViewSet, basename='assignment')
 router.register(r'results', ResultViewSet, basename='result')
 
+
 # Custom endpoints can be added here if needed
 custom_urlpatterns = [
     # Example: path('reports/', include('assessment.reports.urls')),

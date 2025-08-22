@@ -316,18 +316,7 @@ class LessonSerializer(serializers.ModelSerializer):
                     setattr(instance.user, attr, value)
             instance.user.save()
 
-        return super().update(instance, validated_data) 
-
-        
-        
-# class SubjectCreateSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Subject
-#         fields = ['name', 'teacher', 'assigned_class']
-# class LessonCreateSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Lesson
-#         fields = ['title', 'content', 'subject', 'date'] 
+        return super().update(instance, validated_data)  
 class StudentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=False)
 
