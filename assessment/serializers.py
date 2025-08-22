@@ -27,16 +27,17 @@ class ExamWriteSerializer(serializers.ModelSerializer):
     )
     teacher = serializers.PrimaryKeyRelatedField(
         queryset=TeacherProfile.objects.all(),
-        required=True
+        required=False  # Made required=False since it will be set automatically
     )
     grade = serializers.PrimaryKeyRelatedField(
         queryset=Grade.objects.all(),
-        required=True
+        required=False  # Made optional since we're replacing it with time fields
     )
     
     class Meta:
         model = Exam
-        fields = ['title', 'subject', 'teacher', 'grade', 'exam_date']
+        fields = ['title', 'subject', 'teacher', 'grade', 'exam_date', 
+                 'start_time', 'end_time', 'duration_minutes', 'description']
 class AssignmentSerializer(serializers.ModelSerializer):
     subject = SubjectWriteSerializer(read_only=True)
     teacher = TeacherProfileSerializer(read_only=True)

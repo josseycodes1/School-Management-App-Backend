@@ -1,6 +1,7 @@
 from django.db import models
 from accounts.models import Subject, Classes
 from accounts.models import StudentProfile, TeacherProfile
+from datetime import datetime, timedelta
 
 # Grade model 
 class Grade(models.Model):
@@ -10,17 +11,35 @@ class Grade(models.Model):
     def __str__(self):
         return self.name
 
-# Exam model
 class Exam(models.Model):
     title = models.CharField(max_length=100)  # Name of the exam e.g., "First Term Math Exam"
     subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True)  # Related subject
     teacher = models.ForeignKey(TeacherProfile, on_delete=models.SET_NULL, null=True, blank=True)  # Who created/owns this exam
     grade = models.ForeignKey(Grade, on_delete=models.SET_NULL, null=True, blank=True)  # Grade this exam is meant for
     exam_date = models.DateField()  # Date the exam is scheduled
+    start_time = models.TimeField(null=True, blank=True)  # Start time of the exam
+    end_time = models.TimeField(null=True, blank=True)  # End time of the exam
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True)  # Duration in minutes
+    description = models.TextField(blank=True, null=True)  # Exam description
     created_at = models.DateTimeField(auto_now_add=True)  # Automatically adds creation timestamp
 
     def __str__(self):
-        return f"{self.title} - {self.subject.name}"
+        subject_name = self.subject.name if self.subject else "No Subject"
+        return f"{self.title} - {subject_name}"
+
+    def save(self, *args, **kwargs):
+        # Auto-calculate duration if start_time and end_time are provided but duration is not
+        if self.start_time and self.end_time and not self.duration_minutes:
+            start_dt = datetime.combine(datetime.today(), self.start_time)
+            end_dt = datetime.combine(datetime.today(), self.end_time)
+            
+            if end_dt < start_dt:
+                end_dt = end_dt + timedelta(days=1)  # Handle跨天
+                
+            duration = end_dt - start_dt
+            self.duration_minutes = duration.total_seconds() // 60
+            
+        super().save(*args, **kwargs)
 
 # Assignment model
 class Assignment(models.Model):

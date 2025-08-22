@@ -5,7 +5,7 @@ from django.db.models import Q
 from .models import Grade, Exam, Assignment, Result
 from .serializers import GradeSerializer, ExamReadSerializer, AssignmentSerializer, ResultSerializer, ExamWriteSerializer
 from accounts.permissions import IsAdminOrReadOnly, RolePermission
-
+from datetime import datetime, timedelta
 
 class GradeViewSet(viewsets.ModelViewSet):
     queryset = Grade.objects.all()
@@ -16,6 +16,7 @@ class GradeViewSet(viewsets.ModelViewSet):
 class ExamViewSet(viewsets.ModelViewSet):
     queryset = Exam.objects.all().select_related('subject', 'teacher', 'grade')
     permission_classes = [permissions.IsAuthenticated]
+    
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
@@ -28,15 +29,6 @@ class ExamViewSet(viewsets.ModelViewSet):
             return ExamReadSerializer
         return ExamWriteSerializer
     
-    # EXPLICITLY ADD UPDATE METHODS
-    def update(self, request, *args, **kwargs):
-        """Handle PUT requests"""
-        return super().update(request, *args, **kwargs)
-    
-    def partial_update(self, request, *args, **kwargs):
-        """Handle PATCH requests"""
-        return super().partial_update(request, *args, **kwargs)
-    
     def get_queryset(self):
         queryset = super().get_queryset()
         if hasattr(self.request.user, 'teacher_profile'):
@@ -44,11 +36,55 @@ class ExamViewSet(viewsets.ModelViewSet):
         return queryset
     
     def perform_create(self, serializer):
+        # Automatically set the teacher to the current user's teacher profile
+        teacher_profile = None
         if hasattr(self.request.user, 'teacher_profile'):
-            serializer.save(teacher=self.request.user.teacher_profile)
-        else:
-            serializer.save()
-
+            teacher_profile = self.request.user.teacher_profile
+        
+        # Calculate duration if start_time and end_time are provided
+        data = serializer.validated_data
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        duration_minutes = data.get('duration_minutes')
+        
+        if start_time and end_time and not duration_minutes:
+            # Calculate duration automatically
+            start_dt = datetime.combine(datetime.today(), start_time)
+            end_dt = datetime.combine(datetime.today(), end_time)
+            
+            if end_dt < start_dt:
+                end_dt = end_dt + timedelta(days=1)
+                
+            duration = end_dt - start_dt
+            duration_minutes = duration.total_seconds() // 60
+            
+            # Update the serializer data with calculated duration
+            serializer.validated_data['duration_minutes'] = duration_minutes
+        
+        serializer.save(teacher=teacher_profile)
+    
+    def perform_update(self, serializer):
+        # Calculate duration if start_time and end_time are provided but duration is not
+        data = serializer.validated_data
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        duration_minutes = data.get('duration_minutes')
+        
+        if start_time and end_time and not duration_minutes:
+            # Calculate duration automatically
+            start_dt = datetime.combine(datetime.today(), start_time)
+            end_dt = datetime.combine(datetime.today(), end_time)
+            
+            if end_dt < start_dt:
+                end_dt = end_dt + timedelta(days=1)
+                
+            duration = end_dt - start_dt
+            duration_minutes = duration.total_seconds() // 60
+            
+            # Update the serializer data with calculated duration
+            serializer.validated_data['duration_minutes'] = duration_minutes
+        
+        serializer.save()
 
 class AssignmentViewSet(viewsets.ModelViewSet):
     serializer_class = AssignmentSerializer
