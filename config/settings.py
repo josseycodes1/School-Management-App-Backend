@@ -33,8 +33,20 @@ SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DEBUG", default=False, cast=bool)
 
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    "josseycodes-academy.onrender.com",
+    "localhost",
+    "127.0.0.1",
+    "https://school-management-app-frontend.onrender.com/",
+]
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000", 
+    "http://127.0.0.1:3000",
+    "https://school-management-app-frontend.onrender.com",
+]
+
+CORS_ALLOW_CREDENTIALS = True 
 
 # Application definition
 
@@ -65,15 +77,15 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+   
 
 ]
 
@@ -212,18 +224,11 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For developm
 #DEFAULT_FROM_EMAIL = 'Your Name <your@gmail.com>'
 
 # Frontend URL for verification links
-FRONTEND_URL = 'http://localhost:3000'  # Change to your frontend URL
+FRONTEND_URL = 'https://school-management-app-frontend.onrender.com'  # Change to your frontend URL
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000", 
-    "http://127.0.0.1:3000",
-]
-
-CORS_ALLOW_CREDENTIALS = True 
 
 
 REST_FRAMEWORK = {
