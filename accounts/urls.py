@@ -39,6 +39,7 @@ router.register(r'subjects', SubjectViewSet, basename='subject')
 urlpatterns = [
     #Custom endpoints FIRST
     path('user-counts/', views.user_counts, name='user-counts'),
+     path('api/accounts/user/<uuid:user_id>/', views.get_user_details, name='user-details'),
     path('students/onboarding/', StudentOnboardingView.as_view(), name='student-onboarding'),
     path('students/onboarding/progress/', StudentOnboardingProgressView.as_view(), name='student-onboarding-progress'),
     path('teachers/onboarding/', TeacherOnboardingView.as_view(), name='teacher-onboarding'),

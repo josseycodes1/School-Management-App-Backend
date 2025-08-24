@@ -389,9 +389,48 @@ class SubjectViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(subjects, many=True)
             return Response(serializer.data)
         return Response([], status=status.HTTP_200_OK)
-    
-    
-
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_details(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        
+        # Get profile based on user role
+        profile_data = {}
+        if user.role == 'teacher':
+            profile = TeacherProfile.objects.get(user=user)
+            profile_data = {
+                'profile_image': profile.photo.url if profile.photo else None,
+            }
+        elif user.role == 'student':
+            profile = StudentProfile.objects.get(user=user)
+            profile_data = {
+                'profile_image': profile.photo.url if profile.photo else None,
+            }
+        elif user.role == 'parent':
+            profile = ParentProfile.objects.get(user=user)
+            profile_data = {
+                'profile_image': profile.photo.url if profile.photo else None,
+            }
+        elif user.role == 'admin':
+            profile = AdminProfile.objects.get(user=user)
+            profile_data = {
+                'profile_image': profile.photo.url if profile.photo else None,
+            }
+        
+        response_data = {
+            'id': user.id,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'role': user.role,
+            **profile_data
+        }
+        
+        return Response(response_data)
+        
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)
 class LessonViewSet(viewsets.ModelViewSet):
     queryset = Lesson.objects.all()
     permission_classes = [IsAuthenticated]
