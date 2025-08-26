@@ -42,6 +42,11 @@ from django.utils.crypto import get_random_string
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    
+    def get_permissions(self):
+        if self.action in ["create", "verify_email", "resend_verification"]:
+            return [AllowAny()]
+        return super().get_permissions()
 
     #shared helper method for sending verification email
     def send_verification_email(self, user):
