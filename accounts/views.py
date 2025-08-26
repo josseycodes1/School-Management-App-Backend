@@ -44,10 +44,20 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     
     def get_authenticators(self):
-    # Disable authentication for signup + verification
-        if self.action in ["create", "verify_email", "resend_verification"]:
-            return []
+        no_auth_paths = [
+            "create",             # signup
+            "verify_email",       # email verification
+            "resend_verification" # resend
+        ]
+
+    # self.action is not always set here → safe fallback
+        action = getattr(self, "action", None)
+
+        if action in no_auth_paths:
+            return []  # no authentication required
+
         return super().get_authenticators()
+
 
     def get_permissions(self):
     # Allow anyone for signup + verification
