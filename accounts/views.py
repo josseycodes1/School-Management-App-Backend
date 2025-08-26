@@ -47,6 +47,12 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action in ["create", "verify_email", "resend_verification"]:
             return [AllowAny()]
         return super().get_permissions()
+    
+    def get_authenticators(self):
+        """Skip authentication for signup + verification endpoints"""
+        if self.action in ["create", "verify_email", "resend_verification"]:
+            return []  # no authentication required
+        return super().get_authenticators()
 
     #shared helper method for sending verification email
     def send_verification_email(self, user):
