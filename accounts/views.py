@@ -38,55 +38,26 @@ from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
 from django.db import transaction
 from django.utils.crypto import get_random_string
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+
     
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    
-    def get_authenticators(self):
-        no_auth_actions = ["create", "verify_email", "resend_verification"]
-        
-        # Get the action name properly
-        if hasattr(self, 'action_map'):
-            # For ViewSets with custom actions
-            action = self.action_map.get(self.request.method.lower(), self.action)
-        else:
-            action = self.action
-        
-        if action in no_auth_actions:
-            return []  # no authentication required
-        
-        return super().get_authenticators()
 
     def get_permissions(self):
-        # Allow anyone for signup + verification
-        no_auth_actions = ["create", "verify_email", "resend_verification"]
-        
-        if self.action in no_auth_actions:
-            return [permissions.AllowAny()]
-        return super().get_permissions()
+        if self.action in ['verify_email', 'resend_verification', 'create']:
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
-
-    def get_permissions(self):
-    # Allow anyone for signup + verification
-        if self.action in ["create", "verify_email", "resend_verification"]:
-            return [permissions.AllowAny()]
-        return super().get_permissions()
-
-    
-    #shared helper method for sending verification email
+    # shared helper
     def send_verification_email(self, user):
-        token = get_random_string(length=6, allowed_chars='0123456789')
+        token = user.generate_verification_token()
         user.verification_token = token
         user.save()
-
         verification_link = f"{settings.FRONTEND_URL}/verify-email?email={user.email}&token={token}"
-
-
         send_mail(
             subject="Verify your email",
             message=f"Use this token: {token}\nOr click: {verification_link}",
@@ -95,32 +66,23 @@ class UserViewSet(viewsets.ModelViewSet):
             fail_silently=False,
         )
 
-    #when a new user signs up
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-
-        #send email once
         self.send_verification_email(user)
+        return Response({"message": "User created. Verification email sent."}, status=201)
 
-        return Response(
-            {"message": "User created. Verification email sent."},
-            status=status.HTTP_201_CREATED,
-        )
-
-    #resend verification (called with POST to /users/{id}/resend_verification/)
     @action(detail=True, methods=["post"], permission_classes=[AllowAny])
     def resend_verification(self, request, pk=None):
         user = self.get_object()
-
         if user.is_verified:
             return Response({"error": "User already verified."}, status=400)
-
         self.send_verification_email(user)
         return Response({"message": "Verification email resent."})
 
-    @action(detail=False, methods=['post'], url_path='verify-email', permission_classes=[AllowAny])
+    # <--- Move this inside the class!
+    @action(detail=False, methods=['post'], url_path='verify_email', permission_classes=[AllowAny])
     def verify_email(self, request):
         email = request.data.get("email")
         token = request.data.get("token")
@@ -128,23 +90,16 @@ class UserViewSet(viewsets.ModelViewSet):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "User not found"}, status=404)
 
-        # check token
         if user.verification_token != token:
-            return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid token"}, status=400)
 
-        # check expiry
-        if user.verification_token_expiry and timezone.now() > user.verification_token_expiry:
-            return Response({"error": "Token expired"}, status=status.HTTP_400_BAD_REQUEST)
+        if user.is_verification_token_expired:
+            return Response({"error": "Token expired"}, status=400)
 
-        # mark user as verified
-        user.is_verified = True
-        user.verification_token = None
-        user.verification_token_expiry = None
-        user.save()
+        user.verify_user()
 
-        # send confirmation email
         send_mail(
             "Email Verified Successfully 🎉",
             f"Hi {user.first_name},\n\nYour email {user.email} has been verified successfully.\n\nYou can now log in to your account.",
@@ -153,7 +108,8 @@ class UserViewSet(viewsets.ModelViewSet):
             fail_silently=False,
         )
 
-        return Response({"message": "Email verified successfully"}, status=status.HTTP_200_OK)
+        return Response({"message": "Email verified successfully"}, status=200)
+
 #usercount on admin dashboard
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
