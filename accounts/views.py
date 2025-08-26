@@ -43,20 +43,32 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    
     def get_authenticators(self):
-        no_auth_paths = [
-            "create",             # signup
-            "verify_email",       # email verification
-            "resend_verification" # resend
-        ]
-
-    # self.action is not always set here → safe fallback
-        action = getattr(self, "action", None)
-
-        if action in no_auth_paths:
+        no_auth_actions = ["create", "verify_email", "resend_verification"]
+        
+        # Get the action name properly
+        if hasattr(self, 'action_map'):
+            # For ViewSets with custom actions
+            action = self.action_map.get(self.request.method.lower(), self.action)
+        else:
+            action = self.action
+        
+        if action in no_auth_actions:
             return []  # no authentication required
-
+        
         return super().get_authenticators()
+
+    def get_permissions(self):
+        # Allow anyone for signup + verification
+        no_auth_actions = ["create", "verify_email", "resend_verification"]
+        
+        if self.action in no_auth_actions:
+            return [permissions.AllowAny()]
+        return super().get_permissions()
 
 
     def get_permissions(self):
