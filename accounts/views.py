@@ -43,10 +43,6 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     
-    def get_permissions(self):
-        if self.action in ["create", "verify_email", "resend_verification"]:
-            return [AllowAny()]
-        return super().get_permissions()
     
     def get_authenticators(self):
         """Skip authentication for signup + verification endpoints"""
