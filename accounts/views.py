@@ -80,7 +80,7 @@ class UserViewSet(viewsets.ModelViewSet):
         )
 
     #resend verification (called with POST to /users/{id}/resend_verification/)
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], permission_classes=[AllowAny])
     def resend_verification(self, request, pk=None):
         user = self.get_object()
 
@@ -90,7 +90,7 @@ class UserViewSet(viewsets.ModelViewSet):
         self.send_verification_email(user)
         return Response({"message": "Verification email resent."})
 
-    @action(detail=False, methods=['post'], url_path='verify-email')
+    @action(detail=False, methods=['post'], url_path='verify-email', permission_classes=[AllowAny])
     def verify_email(self, request):
         email = request.data.get("email")
         token = request.data.get("token")
