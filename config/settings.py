@@ -109,17 +109,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-
-# Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
-# }
-
 DATABASES = {
     "default": dj_database_url.config(
         default=config("DATABASE_URL")
@@ -193,14 +182,18 @@ REST_FRAMEWORK = {
 }
 
 # Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'your-smtp-host.com'
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'your-email@example.com'
-EMAIL_HOST_PASSWORD = 'your-email-password'
-DEFAULT_FROM_EMAIL = 'noreply@yourschool.com'
-FRONTEND_URL = 'http://localhost:3000'
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")       
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")  
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL") 
+
+
+# Email configuration
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
+
 
 # JWT settings
 from datetime import timedelta
@@ -211,20 +204,8 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-# Email configuration
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
-
-# settings.py
-#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-#EMAIL_HOST = 'smtp.gmail.com'
-#EMAIL_PORT = 587
-#EMAIL_USE_TLS = True
-#EMAIL_HOST_USER = 'queenjossey@gmail.com'  # Your Gmail
-#EMAIL_HOST_PASSWORD = 'your-app-password'  # NOT your regular password!
-#DEFAULT_FROM_EMAIL = 'Your Name <your@gmail.com>'
-
 # Frontend URL for verification links
-FRONTEND_URL = 'https://school-management-app-frontend.onrender.com'  # Change to your frontend URL
+FRONTEND_URL = 'https://school-management-app-frontend.onrender.com' 
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
