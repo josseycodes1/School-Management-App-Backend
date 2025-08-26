@@ -10,7 +10,6 @@ from .views import (
     PasswordResetView,
     PasswordResetVerifyView,
     PasswordResetResendView,
-    ResendVerificationView,
     StudentOnboardingView,
     StudentOnboardingProgressView,
     TeacherOnboardingView,
@@ -60,5 +59,4 @@ urlpatterns = [
     path('password_reset/', PasswordResetView.as_view(), name='password-reset'),
     path('password_reset/verify/', PasswordResetVerifyView.as_view(), name='password-reset-verify'),
     path('password_reset/resend/', PasswordResetResendView.as_view(), name='password-reset-resend'),
-    path('users/resend_verification/', ResendVerificationView.as_view(), name='resend-verification'),
 ]

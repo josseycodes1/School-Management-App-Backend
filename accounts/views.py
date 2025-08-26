@@ -37,73 +37,88 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
 from django.db import transaction
+from django.utils.crypto import get_random_string
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    def get_permissions(self):
-        if self.action in ['create', 'verify_email', 'resend_verification']:
-            return [AllowAny()]
-        return [IsAuthenticated()]
+    #shared helper method for sending verification email
+    def send_verification_email(self, user):
+        token = get_random_string(length=6, allowed_chars='0123456789')
+        user.verification_token = token
+        user.save()
 
-    @action(detail=False, methods=['post'], url_path='resend_verification')
-    def resend_verification(self, request):
-        email = request.data.get('email')
-        
-        if not email:
-            return Response(
-                {"error": "Email is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        verification_link = f"{settings.FRONTEND_URL}/verify-email?email={user.email}&token={token}"
 
-        try:
-            user = User.objects.get(email=email, is_verified=False)
-            token = user.generate_verification_token()
-            
-            if settings.DEBUG:
-                print(f"New verification token for {email}: {token}")
 
-            send_mail(
-                "Your New Verification Code",
-                f"Your new verification code is: {token}\n\n"
-                f"Please enter this code to complete your registration.",
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False,
-            )
+        send_mail(
+            subject="Verify your email",
+            message=f"Use this token: {token}\nOr click: {verification_link}",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
 
-            return Response({
-                "message": "New verification code sent successfully"
-            }, status=status.HTTP_200_OK)
+    #when a new user signs up
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
 
-        except User.DoesNotExist:
-            return Response(
-                {"error": "Email not found or already verified"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        #send email once
+        self.send_verification_email(user)
 
-    @action(detail=False, methods=['post'], url_path='verify_email', permission_classes=[AllowAny])
+        return Response(
+            {"message": "User created. Verification email sent."},
+            status=status.HTTP_201_CREATED,
+        )
+
+    #resend verification (called with POST to /users/{id}/resend_verification/)
+    @action(detail=True, methods=["post"])
+    def resend_verification(self, request, pk=None):
+        user = self.get_object()
+
+        if user.is_verified:
+            return Response({"error": "User already verified."}, status=400)
+
+        self.send_verification_email(user)
+        return Response({"message": "Verification email resent."})
+
+    @action(detail=False, methods=['post'], url_path='verify-email')
     def verify_email(self, request):
-        token = request.data.get('token')
-        email = request.data.get('email')
-
-        if not token or not email:
-            return Response({"error": "Token and email are required"}, status=status.HTTP_400_BAD_REQUEST)
+        email = request.data.get("email")
+        token = request.data.get("token")
 
         try:
-            user = User.objects.get(email=email, verification_token=token)
-
-            if user.is_verification_token_expired:
-                return Response({"error": "Verification token has expired"}, status=status.HTTP_400_BAD_REQUEST)
-
-            user.verify_user()
-
-            return Response({"message": "Email verified successfully"}, status=status.HTTP_200_OK)
-
+            user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({"error": "Invalid token or email"}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # check token
+        if user.verification_token != token:
+            return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # check expiry
+        if user.verification_token_expiry and timezone.now() > user.verification_token_expiry:
+            return Response({"error": "Token expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # mark user as verified
+        user.is_verified = True
+        user.verification_token = None
+        user.verification_token_expiry = None
+        user.save()
+
+        # send confirmation email
+        send_mail(
+            "Email Verified Successfully 🎉",
+            f"Hi {user.first_name},\n\nYour email {user.email} has been verified successfully.\n\nYou can now log in to your account.",
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False,
+        )
+
+        return Response({"message": "Email verified successfully"}, status=status.HTTP_200_OK)
 #usercount on admin dashboard
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -252,25 +267,7 @@ class PasswordResetResendView(APIView):
 
             return Response({"message": "Password reset link resent"}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
-            return Response({"error": "Email not found"}, status=status.HTTP_404_NOT_FOUND)
-
-class ResendVerificationView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        email = request.data.get('email')
-        if not email:
-            return Response({"error": "Email is required"}, status=400)
-        
-        try:
-            user = User.objects.get(email=email, is_verified=False)
-            token = user.generate_verification_token()
-            return Response({
-                "message": "Verification code resent",
-                "token": token
-            })
-        except User.DoesNotExist:
-            return Response({"error": "Email not found or already verified"}, status=400)        
+            return Response({"error": "Email not found"}, status=status.HTTP_404_NOT_FOUND)       
     
 class StudentOnboardingView(APIView):
     parser_classes = [MultiPartParser, FormParser]
