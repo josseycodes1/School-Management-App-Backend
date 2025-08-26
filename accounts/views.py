@@ -43,13 +43,11 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     
-    
-    def get_authenticators(self):
-        """Skip authentication for signup + verification endpoints"""
+    def get_permissions(self):
         if self.action in ["create", "verify_email", "resend_verification"]:
-            return []  # no authentication required
-        return super().get_authenticators()
-
+            return [AllowAny()]
+        return super().get_permissions()
+    
     #shared helper method for sending verification email
     def send_verification_email(self, user):
         token = get_random_string(length=6, allowed_chars='0123456789')
