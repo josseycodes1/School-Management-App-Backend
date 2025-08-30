@@ -73,15 +73,24 @@ class UserViewSet(viewsets.ModelViewSet):
         self.send_verification_email(user)
         return Response({"message": "User created. Verification email sent."}, status=201)
 
-    @action(detail=True, methods=["post"], permission_classes=[AllowAny])
-    def resend_verification(self, request, pk=None):
-        user = self.get_object()
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny], url_path="resend_verification")
+    def resend_verification(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"error": "Email is required"}, status=400)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=404)
+
         if user.is_verified:
             return Response({"error": "User already verified."}, status=400)
-        self.send_verification_email(user)
-        return Response({"message": "Verification email resent."})
 
-    # <--- Move this inside the class!
+        self.send_verification_email(user)
+        return Response({"message": "Verification email resent."}, status=200)
+
+
     @action(detail=False, methods=['post'], url_path='verify_email', permission_classes=[AllowAny])
     def verify_email(self, request):
         email = request.data.get("email")
