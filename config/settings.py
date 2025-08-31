@@ -14,6 +14,7 @@ from decouple import config
 import dj_database_url
 from pathlib import Path
 import os
+import cloudinary
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -60,6 +61,8 @@ INSTALLED_APPS = [
     
     'django_extensions',
     'corsheaders',
+    'cloudinary',
+    'cloudinary_storage',
     
     
     'accounts',
@@ -175,8 +178,22 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
 # Media files
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'   # (Cloudinary automatically overrides this)
+
+
+# Media files storage (Cloudinary instead of local /media/)
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# Cloudinary credentials (get from dashboard)
+cloudinary.config( 
+  cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME"),
+  api_key = os.getenv("CLOUDINARY_API_KEY"),
+  api_secret = os.getenv("CLOUDINARY_API_SECRET"),
+  secure = True
+)
+
+
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
