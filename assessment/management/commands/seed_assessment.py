@@ -24,7 +24,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        # Clear data if requested
+        if not Subject.objects.exists():
+            self.stdout.write(self.style.ERROR("❌ No subjects found. Run accounts seed first!"))
+            return
+
         if options['clear']:
             Result.objects.all().delete()
             Exam.objects.all().delete()
@@ -32,70 +35,58 @@ class Command(BaseCommand):
             Grade.objects.all().delete()
             self.stdout.write(self.style.SUCCESS("✅ Cleared all assessment data."))
 
-        # Step 1: Create grades
         self.create_grades()
-
-        # Step 2: Create exams and assignments
         self.create_exams_and_assignments(options['count'])
-
-        # Step 3: Create results
         self.create_results()
-
-        self.stdout.write(self.style.SUCCESS("🌱 Successfully seeded assessment data!"))
+        self.stdout.write(self.style.SUCCESS(f"✅ Created {options['count']} assessments per subject with results!"))
 
     def create_grades(self):
-        if Grade.objects.exists():
-            self.stdout.write("📊 Grades already exist, skipping creation.")
-            return
-
-        grades = [
-            ("A", "Excellent"),
-            ("B", "Good"),
-            ("C", "Average"),
-            ("D", "Below Average"),
-            ("F", "Fail")
-        ]
-        for name, desc in grades:
-            Grade.objects.create(name=name, description=desc)
-
-        self.stdout.write(self.style.SUCCESS("📊 Created grade levels"))
+        if not Grade.objects.exists():
+            grades = [
+                ("A", "Excellent"),
+                ("B", "Good"),
+                ("C", "Average"),
+                ("D", "Below Average"),
+                ("F", "Fail")
+            ]
+            for name, desc in grades:
+                Grade.objects.create(name=name, description=desc)
+            self.stdout.write(self.style.SUCCESS("📊 Created grade levels"))
 
     def create_exams_and_assignments(self, count_per_subject):
-        subjects = list(Subject.objects.all())
+        subjects = Subject.objects.all()
         teachers = list(TeacherProfile.objects.all())
         grades = list(Grade.objects.all())
 
-        if not subjects:
-            self.stdout.write(self.style.ERROR("❌ No subjects found. Seed accounts first!"))
-            return
-        if not teachers:
-            self.stdout.write(self.style.ERROR("❌ No teachers found. Seed accounts first!"))
-            return
-        if not grades:
-            self.stdout.write(self.style.ERROR("❌ No grades found. Seed assessment first!"))
-            return
-
         for subject in subjects:
-            # Exams
+            # Create exams
             for _ in range(count_per_subject):
-                Exam.objects.create(
-                    title=f"{subject.name} {fake.word().title()} Exam",
-                    subject=subject,
-                    teacher=random.choice(teachers),
-                    grade=random.choice(grades),
-                    exam_date=fake.future_date(end_date="+60d")
-                )
+                try:
+                    exam_date = timezone.make_aware(fake.future_datetime(end_date="+60d"))
+                    Exam.objects.create(
+                        title=f"{subject.name} {fake.word().title()} Exam",
+                        subject=subject,
+                        teacher=random.choice(teachers),
+                        grade=random.choice(grades),
+                        exam_date=exam_date
+                    )
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f"❌ Error creating exam for {subject.name}: {e}"))
 
-            # Assignments
+            # Create assignments
             for _ in range(count_per_subject):
-                Assignment.objects.create(
-                    title=f"{subject.name} {fake.word().title()} Assignment",
-                    description=fake.paragraph(),
-                    subject=subject,
-                    teacher=random.choice(teachers),
-                    grade=random.choice(grades),
-                    due_date=fake.future_date(end_date="+30d")
-                )
+                try:
+                    due_date = timezone.make_aware(fake.future_datetime(end_date="+30d"))
+                    Assignment.objects.create(
+                        title=f"{subject.name} {fake.word().title()} Assignment",
+                        description=fake.paragraph(),
+                        subject=subject,
+                        teacher=random.choice(teachers),
+                        grade=random.choice(grades),
+                        due_date=due_date
+                    )
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f"❌ Error creating assignment for {subject.name}: {e}"))
 
         self.stdout.write(self.style.SUCCESS(f"📝 Created {count_per_subject} exams & assignments per subject"))
 
@@ -104,31 +95,26 @@ class Command(BaseCommand):
         exams = list(Exam.objects.all())
         assignments = list(Assignment.objects.all())
 
-        if not students:
-            self.stdout.write(self.style.WARNING("⚠️ No students found. Skipping results creation."))
-            return
-        if not exams and not assignments:
-            self.stdout.write(self.style.WARNING("⚠️ No exams or assignments found. Skipping results creation."))
-            return
-
-        # Exam results
         for exam in exams:
-            participant_count = max(1, int(len(students) * 0.9))
-            for student in random.sample(students, k=participant_count):
-                Result.objects.create(
-                    student=student,
-                    exam=exam,
-                    score=random.uniform(60, 100)
-                )
+            try:
+                for student in random.sample(students, k=int(len(students)*0.9)):
+                    Result.objects.create(
+                        student=student,
+                        exam=exam,
+                        score=random.uniform(60, 100)
+                    )
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"❌ Error creating results for exam {exam.title}: {e}"))
 
-        # Assignment results
         for assignment in assignments:
-            participant_count = max(1, int(len(students) * 0.8))
-            for student in random.sample(students, k=participant_count):
-                Result.objects.create(
-                    student=student,
-                    assignment=assignment,
-                    score=random.uniform(50, 100)
-                )
+            try:
+                for student in random.sample(students, k=int(len(students)*0.8)):
+                    Result.objects.create(
+                        student=student,
+                        assignment=assignment,
+                        score=random.uniform(50, 100)
+                    )
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"❌ Error creating results for assignment {assignment.title}: {e}"))
 
         self.stdout.write(self.style.SUCCESS("🎯 Created realistic student results"))
