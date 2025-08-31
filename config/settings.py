@@ -109,11 +109,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# DATABASES = {
-#     "default": dj_database_url.config(
-#         default=config("DATABASE_URL")
-#     )
-# }
+DATABASES = {
+    "default": dj_database_url.config(
+        default=config("DATABASE_URL")
+    )
+}
 
 # Default local DB (for development)
 # DATABASES = {
@@ -132,11 +132,6 @@ WSGI_APPLICATION = "config.wsgi.application"
 # if DATABASE_URL:
 #     DATABASES['default'] = dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL')
-    )
-}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
