@@ -265,10 +265,17 @@ class PasswordResetResendView(APIView):
             # Build reset URL
             frontend_reset_url = f"{settings.FRONTEND_URL}/verify-forgot-password?email={user.email}&token={user.password_reset_token}"
 
-            # Send email
+            # Send email with both link and raw token
+            email_message = (
+                f"Hello {user.first_name},\n\n"
+                f"Click the link below to reset your password:\n{frontend_reset_url}\n\n"
+                f"Or use this token manually in the form: {user.password_reset_token}\n\n"
+                "If you didn't request a password reset, you can ignore this email."
+            )
+
             send_mail(
                 subject="Reset Your Password",
-                message=f"Hello {user.first_name},\n\nClick the link below to reset your password:\n{frontend_reset_url}\n\nIf you didn't request a password reset, you can ignore this email.",
+                message=email_message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
                 fail_silently=False,
@@ -276,11 +283,12 @@ class PasswordResetResendView(APIView):
 
             if settings.DEBUG:
                 print(f"Password reset link for {email}: {frontend_reset_url}")
+                print(f"Password reset token for {email}: {user.password_reset_token}")
 
             return Response({"message": "Password reset link resent"}, status=status.HTTP_200_OK)
 
         except User.DoesNotExist:
-            return Response({"error": "Email not found"}, status=status.HTTP_404_NOT_FOUND)       
+            return Response({"error": "Email not found"}, status=status.HTTP_404_NOT_FOUND)     
     
 class StudentOnboardingView(APIView):
     parser_classes = [MultiPartParser, FormParser]
