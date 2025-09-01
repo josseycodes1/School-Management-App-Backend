@@ -14,9 +14,8 @@ class GradeViewSet(viewsets.ModelViewSet):
     
 
 class ExamViewSet(viewsets.ModelViewSet):
-    queryset = Exam.objects.all().select_related('subject', 'teacher', 'grade')
+    queryset = Exam.objects.all().prefetch_related('audiences')[:50]  # limit results
     permission_classes = [permissions.IsAuthenticated]
-    
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
