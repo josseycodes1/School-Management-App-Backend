@@ -40,9 +40,15 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
                 )
 
                 # Restrict by audience for non-admin/non-teacher users
-                if not (self.request.user.is_staff or self.request.user.role == 'teacher'):
-                    user_role = self.request.user.role  # e.g., 'student' or 'parent'
-                    queryset = queryset.filter(audiences__contains=[user_role])
+                user_role = self.request.user.role
+
+                if user_role == 'student':
+                    queryset = queryset.filter(audiences__student__user=self.request.user)
+                elif user_role == 'teacher':
+                    queryset = queryset.filter(audiences__teacher__user=self.request.user)
+                elif user_role == 'parent':
+                    queryset = queryset.filter(audiences__parent__user=self.request.user)
+
 
         return queryset.order_by('-start_date')
 
