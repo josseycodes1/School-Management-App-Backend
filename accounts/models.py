@@ -3,6 +3,8 @@ from django.db import models, transaction
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
 from datetime import timedelta
+from django.conf import settings
+from cloudinary.models import CloudinaryField
 
 class Gender(models.TextChoices):
     MALE = "M", "Male"
@@ -118,7 +120,7 @@ class ProfileMixin(models.Model):
     address = models.TextField(blank=True)
     gender = models.CharField(max_length=1, choices=Gender.choices, blank=True)
     birth_date = models.DateField(null=True, blank=True)
-    photo = models.ImageField(upload_to='profile_photos/', null=True, blank=True)
+    photo = CloudinaryField('image', blank=True, null=True)
     blood_type = models.CharField(max_length=3, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
