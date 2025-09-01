@@ -24,7 +24,7 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
         return AnnouncementSerializer
 
     def get_queryset(self):
-        queryset = Announcement.objects.all()
+        queryset = Announcement.objects.all().prefetch_related('audiences')[:50]  # limit results
         now = timezone.now()
 
         # Only filter for LIST or RETRIEVE when not showing all
