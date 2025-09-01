@@ -14,75 +14,64 @@ class GradeViewSet(viewsets.ModelViewSet):
     
 
 class ExamViewSet(viewsets.ModelViewSet):
-    queryset = Exam.objects.all().prefetch_related('audiences')[:50]  # limit results
     permission_classes = [permissions.IsAuthenticated]
+
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
         else:
             permission_classes = [permissions.IsAuthenticated]
         return [permission() for permission in permission_classes]
-    
+
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
             return ExamReadSerializer
         return ExamWriteSerializer
-    
+
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = Exam.objects.all().select_related("teacher", "subject")  # adjust to actual FKs
         if hasattr(self.request.user, 'teacher_profile'):
-            return queryset.filter(teacher=self.request.user.teacher_profile)
-        return queryset
-    
+            queryset = queryset.filter(teacher=self.request.user.teacher_profile)
+        return queryset.order_by("-id")[:50]  # only return the latest 50 exams
+
     def perform_create(self, serializer):
-        # Automatically set the teacher to the current user's teacher profile
-        teacher_profile = None
-        if hasattr(self.request.user, 'teacher_profile'):
-            teacher_profile = self.request.user.teacher_profile
-        
-        # Calculate duration if start_time and end_time are provided
+        teacher_profile = getattr(self.request.user, "teacher_profile", None)
+
         data = serializer.validated_data
-        start_time = data.get('start_time')
-        end_time = data.get('end_time')
-        duration_minutes = data.get('duration_minutes')
-        
+        start_time = data.get("start_time")
+        end_time = data.get("end_time")
+        duration_minutes = data.get("duration_minutes")
+
         if start_time and end_time and not duration_minutes:
-            # Calculate duration automatically
             start_dt = datetime.combine(datetime.today(), start_time)
             end_dt = datetime.combine(datetime.today(), end_time)
-            
+
             if end_dt < start_dt:
                 end_dt = end_dt + timedelta(days=1)
-                
+
             duration = end_dt - start_dt
             duration_minutes = duration.total_seconds() // 60
-            
-            # Update the serializer data with calculated duration
-            serializer.validated_data['duration_minutes'] = duration_minutes
-        
+            serializer.validated_data["duration_minutes"] = duration_minutes
+
         serializer.save(teacher=teacher_profile)
-    
+
     def perform_update(self, serializer):
-        # Calculate duration if start_time and end_time are provided but duration is not
         data = serializer.validated_data
-        start_time = data.get('start_time')
-        end_time = data.get('end_time')
-        duration_minutes = data.get('duration_minutes')
-        
+        start_time = data.get("start_time")
+        end_time = data.get("end_time")
+        duration_minutes = data.get("duration_minutes")
+
         if start_time and end_time and not duration_minutes:
-            # Calculate duration automatically
             start_dt = datetime.combine(datetime.today(), start_time)
             end_dt = datetime.combine(datetime.today(), end_time)
-            
+
             if end_dt < start_dt:
                 end_dt = end_dt + timedelta(days=1)
-                
+
             duration = end_dt - start_dt
             duration_minutes = duration.total_seconds() // 60
-            
-            # Update the serializer data with calculated duration
-            serializer.validated_data['duration_minutes'] = duration_minutes
-        
+            serializer.validated_data["duration_minutes"] = duration_minutes
+
         serializer.save()
 
 class AssignmentViewSet(viewsets.ModelViewSet):
