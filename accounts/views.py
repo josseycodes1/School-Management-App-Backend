@@ -296,12 +296,12 @@ class StudentOnboardingView(APIView):
 
     def patch(self, request):
         try:
-            # Get or create a student profile for the logged-in user
+            #get or create the profile. If it’s created, save() will auto-generate admission_number
             profile, created = StudentProfile.objects.get_or_create(
-                user=request.user,
-                defaults={'user': request.user}
+                user=request.user
             )
-
+            
+            #use your serializer to update the profile
             serializer = StudentOnboardingSerializer(
                 profile,
                 data=request.data,
@@ -312,17 +312,12 @@ class StudentOnboardingView(APIView):
             if not serializer.is_valid():
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            serializer.save()
-
-            # 👇 Ensure admission_number and other auto fields are refreshed from DB
-            profile.refresh_from_db()
-
-            # 👇 Serialize again after refresh so admission_number isn’t blank
-            response_serializer = StudentOnboardingSerializer(profile, context={'request': request})
-            return Response(response_serializer.data, status=status.HTTP_200_OK)
+            serializer.save()  #saves all fields including photo
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class StudentOnboardingProgressView(APIView):
