@@ -6,6 +6,7 @@ import uuid
 from django.db import IntegrityError
 from .models import Classes, Subject, Lesson
 from datetime import datetime
+from django.utils.crypto import get_random_string
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
@@ -323,43 +324,40 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentProfile
         fields = "__all__"
-        read_only_fields = ["created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at", "admission_number"]
 
     def create(self, validated_data):
         user_data = validated_data.pop("user")
-        # Create user first
         password = user_data.pop("password", None)
         user = User.objects.create(**user_data)
         if password:
             user.set_password(password)
             user.save()
 
-        # Create student profile
-        student_profile = StudentProfile.objects.create(user=user, **validated_data)
+        # Generate admission number
+        year = datetime.date.today().year
+        prefix = str(year)[-2:]  # e.g., "25"
+        random_part = get_random_string(4, allowed_chars="0123456789")
+        admission_number = f"ADM{prefix}{random_part}"
+
+        # Make sure it's unique
+        while StudentProfile.objects.filter(admission_number=admission_number).exists():
+            random_part = get_random_string(4, allowed_chars="0123456789")
+            admission_number = f"ADM{prefix}{random_part}"
+
+        student_profile = StudentProfile.objects.create(
+            user=user,
+            admission_number=admission_number,
+            **validated_data
+        )
         return student_profile
-
-    def update(self, instance, validated_data):
-        user_data = validated_data.pop("user", None)
-
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        if user_data:
-            user = instance.user
-            if "password" in user_data:
-                user.set_password(user_data["password"])
-                user_data.pop("password")
-            for attr, value in user_data.items():
-                setattr(user, attr, value)
-            user.save()
-
-        return instance
 class StudentOnboardingSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', required=False)
     last_name = serializers.CharField(source='user.last_name', required=False)
     photo = serializers.ImageField(required=True)
+    admission_number = serializers.CharField(read_only=True)
+
     
     class Meta:
         model = StudentProfile
@@ -367,7 +365,7 @@ class StudentOnboardingSerializer(serializers.ModelSerializer):
             'email', 'first_name', 'last_name', 
             'phone', 'address', 'gender', 'birth_date',
             'photo', 'blood_type', 'parent_name', 'parent_contact',
-            'class_level', 'admission_number'
+            'class_level'
         ]
         extra_kwargs = {
             'gender': {'required': True},
@@ -375,7 +373,6 @@ class StudentOnboardingSerializer(serializers.ModelSerializer):
             'parent_name': {'required': True},
             'parent_contact': {'required': True},
             'class_level': {'required': True},
-            'admission_number': {'required': True},
             'blood_type': {'required': False},
             'phone': {'required': True},
             'address': {'required': True},
