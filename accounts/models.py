@@ -188,7 +188,7 @@ class StudentProfile(ProfileMixin):
     parent_name = models.CharField(max_length=100, blank=True, verbose_name="Parent/Guardian Name")
     parent_contact = models.CharField(max_length=15, blank=True, verbose_name="Parent/Guardian Phone")
     
-    admission_number = models.CharField(max_length=20, unique=True)
+    admission_number = models.CharField(max_length=20, unique=True, editable=False)
     class_level = models.CharField(max_length=50, blank=True)
     academic_year = models.CharField(max_length=20, blank=True)
     medical_notes = models.TextField(blank=True)

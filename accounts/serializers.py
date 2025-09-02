@@ -365,7 +365,7 @@ class StudentOnboardingSerializer(serializers.ModelSerializer):
             'email', 'first_name', 'last_name', 
             'phone', 'address', 'gender', 'birth_date',
             'photo', 'blood_type', 'parent_name', 'parent_contact',
-            'class_level'
+            'class_level', 'admission_number'
         ]
         extra_kwargs = {
             'gender': {'required': True},
@@ -392,7 +392,7 @@ class StudentOnboardingSerializer(serializers.ModelSerializer):
         required_fields = [
             'phone', 'address', 'gender',
             'birth_date', 'parent_name', 'parent_contact',
-            'class_level', 'photo', 'admission_number'
+            'class_level', 'photo'
         ]
         if all(getattr(instance, field) for field in required_fields):
             instance.is_onboarded = True

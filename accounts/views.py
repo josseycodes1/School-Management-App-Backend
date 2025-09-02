@@ -339,7 +339,7 @@ class StudentOnboardingProgressView(APIView):
                     'birth_date': False,
                     'class_level': False,
                     'photo': False,
-                    'admission_number': False
+                    'admission_number': True
                 }
             })
 
