@@ -5,7 +5,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
 from cloudinary.models import CloudinaryField
-from datetime import datetime
+from datetime import date
 from django.utils.crypto import get_random_string
 
 class Gender(models.TextChoices):
@@ -204,7 +204,7 @@ class StudentProfile(ProfileMixin):
     
     def save(self, *args, **kwargs):
         if not self.admission_number:
-            year = datetime.date.today().year
+            year = date.today().year
             prefix = str(year)[-2:]  # e.g., "25"
             random_part = get_random_string(4, allowed_chars="0123456789")
             admission_number = f"ADM{prefix}{random_part}"
