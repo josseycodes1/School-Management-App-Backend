@@ -1,0 +1,37 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/django-school-app', '.']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/django-school-app']
+  
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+    - 'run'
+    - 'deploy'
+    - 'django-school-app'
+    - '--image'
+    - 'gcr.io/$PROJECT_ID/django-school-app'
+    - '--region'
+    - 'us-central1'
+    - '--platform'
+    - 'managed'
+    - '--allow-unauthenticated'
+    - '--set-env-vars'
+    - 'SECRET_KEY=$_SECRET_KEY,DEBUG=$_DEBUG,CLOUDINARY_CLOUD_NAME=$_CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY=$_CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET=$_CLOUDINARY_API_SECRET,EMAIL_HOST_USER=$_EMAIL_HOST_USER,EMAIL_HOST_PASSWORD=$_EMAIL_HOST_PASSWORD,DEFAULT_FROM_EMAIL=$_DEFAULT_FROM_EMAIL'
+    - '--add-cloudsql-instances'
+    - '$_CLOUDSQL_INSTANCE'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _SECRET_KEY: 'django-insecure-4$q8y^6_g58omjjp3xa9w%$mp()y11e1d&$0#pd$4_p@@uakj7'
+  _DEBUG: 'False'
+  _CLOUDINARY_CLOUD_NAME: 'dz0ug7dc2'
+  _CLOUDINARY_API_KEY: '222444622882984'
+  _CLOUDINARY_API_SECRET: 'n9fvu6FROn2zCxJMF_fuFFkKKjo'
+  _EMAIL_HOST_USER: 'adewumijosephine1@gmail.com'
+  _EMAIL_HOST_PASSWORD: 'nvrqwsapkleftwig'
+  _DEFAULT_FROM_EMAIL: 'adewumijosephine1@gmail.com'
+  _CLOUDSQL_INSTANCE: 'YOUR_PROJECT_ID:us-central1:YOUR_INSTANCE_NAME'

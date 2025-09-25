@@ -195,12 +195,7 @@ class StudentProfile(ProfileMixin):
     academic_year = models.CharField(max_length=20, blank=True)
     medical_notes = models.TextField(blank=True)
     is_onboarded = models.BooleanField(default=False)
-    photo = models.ImageField(
-        upload_to='profile_photos/',
-        null=False,
-        blank=False,
-        verbose_name="Profile Photo"
-    )
+
     
     def save(self, *args, **kwargs):
         if not self.admission_number:
