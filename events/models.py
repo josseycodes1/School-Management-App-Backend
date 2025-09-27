@@ -1,26 +1,22 @@
 from django.db import models
 from accounts.models import StudentProfile, TeacherProfile, ParentProfile
 from django.utils import timezone
-
-#stores information about upcoming or past events
 class Event(models.Model):
-    title = models.CharField(max_length=255)  # The name of the event
-    description = models.TextField()  # Detailed information about the event
-    date = models.DateTimeField()  # When the event will take place
-    location = models.CharField(max_length=255)  # Where the event is happening
-    created_at = models.DateTimeField(auto_now_add=True)  # When the event was created
-    updated_at = models.DateTimeField(auto_now=True)  # When the event was last edited
-
+    title = models.CharField(max_length=255) 
+    description = models.TextField()  
+    date = models.DateTimeField()  
+    location = models.CharField(max_length=255) 
+    created_at = models.DateTimeField(auto_now_add=True) 
+    updated_at = models.DateTimeField(auto_now=True)  
     def __str__(self):
         return f"{self.title} on {self.date.strftime('%Y-%m-%d')}"
 
-#model keeps track of people (students, teachers, parents) who will attend the event
 class EventParticipant(models.Model):
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='participants')  # Which event
-    student = models.ForeignKey(StudentProfile, on_delete=models.SET_NULL, null=True, blank=True)  # Optional student
-    teacher = models.ForeignKey(TeacherProfile, on_delete=models.SET_NULL, null=True, blank=True)  # Optional teacher
-    parent = models.ForeignKey(ParentProfile, on_delete=models.SET_NULL, null=True, blank=True)  # Optional parent
-    registered_at = models.DateTimeField(default=timezone.now)  # When the person registered
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='participants')  
+    student = models.ForeignKey(StudentProfile, on_delete=models.SET_NULL, null=True, blank=True) 
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.SET_NULL, null=True, blank=True) 
+    parent = models.ForeignKey(ParentProfile, on_delete=models.SET_NULL, null=True, blank=True)  
+    registered_at = models.DateTimeField(default=timezone.now) 
 
     def __str__(self):
         participant_name = self.student or self.teacher or self.parent
