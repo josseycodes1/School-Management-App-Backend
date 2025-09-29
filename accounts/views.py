@@ -42,7 +42,6 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 
 
-    
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -52,26 +51,24 @@ class UserViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         return [IsAuthenticated()]
 
-    # shared helper
-    def send_verification_email(self, user):
-        token = user.generate_verification_token()
-        user.verification_token = token
-        user.save()
-        verification_link = f"{settings.FRONTEND_URL}/verify-email?email={user.email}&token={token}"
-        send_mail(
-            subject="Verify your email",
-            message=f"Use this token: {token}\nOr click: {verification_link}",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
-        )
-
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        self.send_verification_email(user)
-        return Response({"message": "User created. Verification email sent."}, status=201)
+
+        # generate token and save to user
+        token = user.generate_verification_token()
+        user.verification_token = token
+        user.save()
+
+        return Response(
+            {
+                "message": "User created successfully. Use the token to verify.",
+                "token": token,
+                "email": user.email,
+            },
+            status=201
+        )
 
     @action(detail=False, methods=["post"], permission_classes=[AllowAny], url_path="resend_verification")
     def resend_verification(self, request):
@@ -87,9 +84,19 @@ class UserViewSet(viewsets.ModelViewSet):
         if user.is_verified:
             return Response({"error": "User already verified."}, status=400)
 
-        self.send_verification_email(user)
-        return Response({"message": "Verification email resent."}, status=200)
+        # generate a fresh token
+        token = user.generate_verification_token()
+        user.verification_token = token
+        user.save()
 
+        return Response(
+            {
+                "message": "Verification token resent successfully.",
+                "token": token,
+                "email": user.email,
+            },
+            status=200
+        )
 
     @action(detail=False, methods=['post'], url_path='verify_email', permission_classes=[AllowAny])
     def verify_email(self, request):
@@ -109,17 +116,88 @@ class UserViewSet(viewsets.ModelViewSet):
 
         user.verify_user()
 
-        send_mail(
-            "Email Verified Successfully 🎉",
-            f"Hi {user.first_name},\n\nYour email {user.email} has been verified successfully.\n\nYou can now log in to your account.",
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=False,
+        return Response(
+            {"message": "Email verified successfully"},
+            status=200
         )
 
-        return Response({"message": "Email verified successfully"}, status=200)
+    
+# class UserViewSet(viewsets.ModelViewSet):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
 
-#usercount on admin dashboard
+#     def get_permissions(self):
+#         if self.action in ['verify_email', 'resend_verification', 'create']:
+#             return [AllowAny()]
+#         return [IsAuthenticated()]
+
+#     # shared helper
+#     def send_verification_email(self, user):
+#         token = user.generate_verification_token()
+#         user.verification_token = token
+#         user.save()
+#         verification_link = f"{settings.FRONTEND_URL}/verify-email?email={user.email}&token={token}"
+#         send_mail(
+#             subject="Verify your email",
+#             message=f"Use this token: {token}\nOr click: {verification_link}",
+#             from_email=settings.DEFAULT_FROM_EMAIL,
+#             recipient_list=[user.email],
+#             fail_silently=False,
+#         )
+
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         user = serializer.save()
+#         self.send_verification_email(user)
+#         return Response({"message": "User created. Verification email sent."}, status=201)
+
+#     @action(detail=False, methods=["post"], permission_classes=[AllowAny], url_path="resend_verification")
+#     def resend_verification(self, request):
+#         email = request.data.get("email")
+#         if not email:
+#             return Response({"error": "Email is required"}, status=400)
+
+#         try:
+#             user = User.objects.get(email=email)
+#         except User.DoesNotExist:
+#             return Response({"error": "User not found"}, status=404)
+
+#         if user.is_verified:
+#             return Response({"error": "User already verified."}, status=400)
+
+#         self.send_verification_email(user)
+#         return Response({"message": "Verification email resent."}, status=200)
+
+
+    # @action(detail=False, methods=['post'], url_path='verify_email', permission_classes=[AllowAny])
+    # def verify_email(self, request):
+    #     email = request.data.get("email")
+    #     token = request.data.get("token")
+
+    #     try:
+    #         user = User.objects.get(email=email)
+    #     except User.DoesNotExist:
+    #         return Response({"error": "User not found"}, status=404)
+
+    #     if user.verification_token != token:
+    #         return Response({"error": "Invalid token"}, status=400)
+
+    #     if user.is_verification_token_expired:
+    #         return Response({"error": "Token expired"}, status=400)
+
+    #     user.verify_user()
+
+    #     send_mail(
+    #         "Email Verified Successfully 🎉",
+    #         f"Hi {user.first_name},\n\nYour email {user.email} has been verified successfully.\n\nYou can now log in to your account.",
+    #         settings.DEFAULT_FROM_EMAIL,
+    #         [user.email],
+    #         fail_silently=False,
+#         )
+
+#         return Response({"message": "Email verified successfully"}, status=200)
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def user_counts(request):
@@ -317,9 +395,6 @@ class StudentOnboardingView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
 class StudentOnboardingProgressView(APIView):
     permission_classes = [IsAuthenticated]
 
