@@ -44,9 +44,8 @@ class Command(BaseCommand):
         ]
 
         for _ in range(count):
-            # Create timezone-aware datetime
             future_date = fake.future_datetime(end_date="+90d")
-            aware_date = timezone.make_aware(future_date)
+            aware_date = timezone.make_aware(future_date, timezone.get_current_timezone())
 
             event = Event.objects.create(
                 title=f"{random.choice(event_types)} {fake.city_suffix()}",
@@ -55,7 +54,7 @@ class Command(BaseCommand):
                 location=fake.city() + " " + random.choice(["Auditorium", "Field", "Hall", "Gym"])
             )
 
-            # Add participants (5-20 per event)
+       
             for __ in range(random.randint(5, 20)):
                 participant_type = random.choices(
                     ['student', 'teacher', 'parent'],

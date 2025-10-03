@@ -18,22 +18,20 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        # Accounts must come first (creates users, classes, and subjects)
+        # 1. Accounts (base data)
         call_command('seed', count=options['count'], clear=options['clear'])
         
-        # Then assessment (needs subjects from accounts)
+        # 2. Assessment (needs subjects and students)
         call_command('seed_assessment', count=int(options['count']/2), clear=options['clear'])
         
-        # Then announcements (depends on accounts)
-        call_command('seed_announcements', count=options['count'], clear=options['clear'])
-        
-        # Then attendance (depends on accounts)
+        # 3. Attendance (needs students and classes)
         call_command('seed_attendance', days=30, clear=options['clear'])
         
-        # Finally events (depends on accounts)
-        call_command('seed_events', count=options['count'], clear=options['clear'])
+        # 4. Announcements (needs all user types)
+        call_command('seed_announcements', count=options['count'], clear=options['clear'])
         
-        self.stdout.write(self.style.SUCCESS("🌱 Successfully seeded ALL apps!"))
+        # 5. Events (needs all user types)
+        call_command('seed_events', count=options['count'], clear=options['clear'])
         
         
         

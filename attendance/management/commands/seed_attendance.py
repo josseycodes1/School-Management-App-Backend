@@ -49,14 +49,17 @@ class Command(BaseCommand):
                 continue
 
             for student in random.sample(students, k=int(len(students)*0.8)):  # 80% attendance each day
-                AttendanceRecord.objects.create(
-                    student=student,
-                    class_ref=random.choice(classes),
-                    date=date,
-                    status=random.choices(
-                        [AttendanceStatus.PRESENT, AttendanceStatus.ABSENT, AttendanceStatus.LATE, AttendanceStatus.EXCUSED],
-                        weights=[85, 8, 5, 2],  # Probability weights
-                        k=1
-                    )[0],
-                    recorded_by=random.choice(teachers)
-                )
+                try:
+                    AttendanceRecord.objects.create(
+                        student=student,
+                        class_ref=random.choice(classes),
+                        date=date,
+                        status=random.choices(
+                            [AttendanceStatus.PRESENT, AttendanceStatus.ABSENT, AttendanceStatus.LATE, AttendanceStatus.EXCUSED],
+                            weights=[85, 8, 5, 2],  # Probability weights
+                            k=1
+                        )[0],
+                        recorded_by=random.choice(teachers)
+                    )
+                except Exception as e:
+                    self.stdout.write(self.style.WARNING(f"⚠️ Skipped attendance for {student}: {e}"))
