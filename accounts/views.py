@@ -839,3 +839,23 @@ class IsAdminOrReadOnly(permissions.BasePermission):
             return True
         return request.user and request.user.is_staff
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_current_user_profile(request):
+    user = request.user
+    if user.role == 'student':
+        profile = StudentProfile.objects.get(user=user)
+        serializer = StudentProfileSerializer(profile)
+    elif user.role == 'teacher':
+        profile = TeacherProfile.objects.get(user=user)
+        serializer = TeacherProfileSerializer(profile)
+    elif user.role == 'parent':
+        profile = ParentProfile.objects.get(user=user)
+        serializer = ParentProfileSerializer(profile)
+    elif user.role == 'admin':
+        profile = AdminProfile.objects.get(user=user)
+        serializer = AdminProfileSerializer(profile)
+    else:
+        return Response({"error": "Unknown user role"}, status=400)
+    
+    return Response(serializer.data)
