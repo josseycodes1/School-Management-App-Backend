@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status, permissions
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.utils import timezone
@@ -40,7 +41,242 @@ from django.db import transaction
 from django.utils.crypto import get_random_string
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
+from django.db.models import Q
 
+class TeacherPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class StudentPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class ParentPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class ClassPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class SubjectPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class TeacherProfileViewSet(viewsets.ModelViewSet):
+    queryset = TeacherProfile.objects.all()
+    serializer_class = TeacherProfileSerializer
+    pagination_class = TeacherPagination
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+          
+            permission_classes = [IsAuthenticated]
+        else:
+          
+            permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+        return [permission() for permission in permission_classes]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(user__first_name__icontains=search) |
+                Q(user__last_name__icontains=search) |
+                Q(user__email__icontains=search) |
+                Q(subject_specialization__icontains=search)
+            )
+        
+        return queryset.select_related('user')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+class StudentProfileViewSet(viewsets.ModelViewSet):
+    queryset = StudentProfile.objects.all()
+    serializer_class = StudentProfileSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly | IsStudentOnboarding]
+    pagination_class = StudentPagination
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = StudentProfile.objects.all()
+        
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(user__first_name__icontains=search) |
+                Q(user__last_name__icontains=search) |
+                Q(user__email__icontains=search) |
+                Q(admission_number__icontains=search) |
+                Q(class_level__icontains=search)
+            )
+        
+        if user.role == "admin":
+            return queryset.select_related('user')
+        return queryset.filter(user=user).select_related('user')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+class ParentProfileViewSet(viewsets.ModelViewSet):
+    queryset = ParentProfile.objects.all()
+    serializer_class = ParentProfileSerializer
+    permission_classes = [IsAdminOrReadOnly, IsAuthenticated]
+    pagination_class = ParentPagination
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(user__first_name__icontains=search) |
+                Q(user__last_name__icontains=search) |
+                Q(user__email__icontains=search) |
+                Q(phone__icontains=search) |
+                Q(occupation__icontains=search)
+            )
+        
+        return queryset.select_related('user')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+class ClassesViewSet(viewsets.ModelViewSet):
+    queryset = Classes.objects.all().select_related('teacher__user')
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
+    pagination_class = ClassPagination
+    
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return ClassesWriteSerializer
+        return ClassesReadSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+     
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) |
+                Q(teacher__user__first_name__icontains=search) |
+                Q(teacher__user__last_name__icontains=search)
+            )
+        
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+class SubjectViewSet(viewsets.ModelViewSet):
+    queryset = Subject.objects.all().select_related('teacher__user', 'assigned_class')
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
+    pagination_class = SubjectPagination
+    
+    def get_serializer_class(self):
+        """Use appropriate serializer based on action"""
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return SubjectWriteSerializer
+        return SubjectReadSerializer
+    
+    def get_queryset(self):
+        """Filter subjects based on user role"""
+        queryset = super().get_queryset()
+        
+     
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) |
+                Q(teacher__user__first_name__icontains=search) |
+                Q(teacher__user__last_name__icontains=search) |
+                Q(assigned_class__name__icontains=search)
+            )
+        
+       
+        if hasattr(self.request.user, 'teacher_profile'):
+            return queryset.filter(teacher=self.request.user.teacher_profile)
+        
+       
+        if hasattr(self.request.user, 'student_profile') and self.request.user.student_profile.class_level:
+            return queryset.filter(assigned_class=self.request.user.student_profile.class_level)
+        
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def by_class(self, request):
+        """Get subjects by class ID"""
+        class_id = request.query_params.get('class_id')
+        if not class_id:
+            return Response(
+                {'error': 'class_id parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        subjects = Subject.objects.filter(assigned_class_id=class_id)
+        serializer = self.get_serializer(subjects, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def my_subjects(self, request):
+        """Get subjects for the current teacher"""
+        if hasattr(request.user, 'teacher_profile'):
+            subjects = Subject.objects.filter(teacher=request.user.teacher_profile)
+            serializer = self.get_serializer(subjects, many=True)
+            return Response(serializer.data)
+        return Response([], status=status.HTTP_200_OK)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -56,7 +292,7 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        # generate token and save to user
+       
         token = user.generate_verification_token()
         user.verification_token = token
         user.save()
@@ -84,7 +320,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if user.is_verified:
             return Response({"error": "User already verified."}, status=400)
 
-        # generate a fresh token
+        
         token = user.generate_verification_token()
         user.verification_token = token
         user.save()
@@ -421,63 +657,6 @@ class StudentOnboardingProgressView(APIView):
                 }
             })
 
-class StudentProfileViewSet(viewsets.ModelViewSet):
-    queryset = StudentProfile.objects.all()
-    serializer_class = StudentProfileSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrReadOnly | IsStudentOnboarding]
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.role == "admin":
-            return StudentProfile.objects.all()
-        return StudentProfile.objects.filter(user=user)
-    
-class SubjectViewSet(viewsets.ModelViewSet):
-    queryset = Subject.objects.all().select_related('teacher__user', 'assigned_class')
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
-    
-    def get_serializer_class(self):
-        """Use appropriate serializer based on action"""
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return SubjectWriteSerializer
-        return SubjectReadSerializer
-    
-    def get_queryset(self):
-        """Filter subjects based on user role"""
-        queryset = super().get_queryset()
-        
-        # If user is a teacher, only show subjects they teach
-        if hasattr(self.request.user, 'teacher_profile'):
-            return queryset.filter(teacher=self.request.user.teacher_profile)
-        
-        # If user is a student, show subjects from their class
-        if hasattr(self.request.user, 'student_profile') and self.request.user.student_profile.class_level:
-            return queryset.filter(assigned_class=self.request.user.student_profile.class_level)
-        
-        return queryset
-    
-    @action(detail=False, methods=['get'])
-    def by_class(self, request):
-        """Get subjects by class ID"""
-        class_id = request.query_params.get('class_id')
-        if not class_id:
-            return Response(
-                {'error': 'class_id parameter is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        subjects = Subject.objects.filter(assigned_class_id=class_id)
-        serializer = self.get_serializer(subjects, many=True)
-        return Response(serializer.data)
-    
-    @action(detail=False, methods=['get'])
-    def my_subjects(self, request):
-        """Get subjects for the current teacher"""
-        if hasattr(request.user, 'teacher_profile'):
-            subjects = Subject.objects.filter(teacher=request.user.teacher_profile)
-            serializer = self.get_serializer(subjects, many=True)
-            return Response(serializer.data)
-        return Response([], status=status.HTTP_200_OK)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_details(request, user_id):
@@ -540,20 +719,7 @@ class AdminProfileViewSet(viewsets.ModelViewSet):
     queryset = AdminProfile.objects.all()
     serializer_class = AdminProfileSerializer
     permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
-
-class TeacherProfileViewSet(viewsets.ModelViewSet):
-    queryset = TeacherProfile.objects.all()
-    serializer_class = TeacherProfileSerializer
-
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            # Allow any authenticated user to view
-            permission_classes = [IsAuthenticated]
-        else:
-            # Only admin can create/update/delete
-            permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
-        return [permission() for permission in permission_classes]
-    
+ 
 class TeacherOnboardingView(APIView):
     parser_classes = [MultiPartParser, FormParser]
     permission_classes = [IsAuthenticated]
@@ -611,11 +777,6 @@ class TeacherOnboardingProgressView(APIView):
                 }
             })
 
-class ParentProfileViewSet(viewsets.ModelViewSet):
-    queryset = ParentProfile.objects.all()
-    serializer_class = ParentProfileSerializer
-    permission_classes = [IsAdminOrReadOnly, IsAuthenticated]
-    
 class ParentOnboardingView(APIView):
     parser_classes = [MultiPartParser, FormParser]
     permission_classes = [IsAuthenticated]
@@ -678,11 +839,3 @@ class IsAdminOrReadOnly(permissions.BasePermission):
             return True
         return request.user and request.user.is_staff
 
-class ClassesViewSet(viewsets.ModelViewSet):
-    queryset = Classes.objects.all().select_related('teacher__user')
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
-    
-    def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return ClassesWriteSerializer
-        return ClassesReadSerializer
