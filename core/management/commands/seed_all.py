@@ -39,3 +39,9 @@ class Command(BaseCommand):
 # python manage.py makemigrations
 # python manage.py migrate
 # python manage.py seed_all --count 40 --clear
+
+# python manage.py seed --count 20 --clear
+# python manage.py seed_assessment --count 10 --clear
+# python manage.py seed_announcements --count 20 --clear
+# python manage.py seed_attendance --days 30 --clear
+# python manage.py seed_events --count 20 --clear

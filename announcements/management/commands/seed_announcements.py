@@ -5,7 +5,7 @@ from accounts.models import StudentProfile, TeacherProfile, ParentProfile
 import random
 from django.utils import timezone
 from datetime import timedelta
-import pytz  # Add this import for timezone support
+import pytz  
 
 fake = Faker()
 
@@ -26,7 +26,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        # Check dependencies first
+      
         required_models = [StudentProfile, TeacherProfile, ParentProfile]
         for model in required_models:
             if not model.objects.exists():
@@ -46,7 +46,7 @@ class Command(BaseCommand):
         parents = list(ParentProfile.objects.all())
 
         for _ in range(count):
-            # Create timezone-aware end_date
+            
             end_date = None
             if random.random() > 0.3:
                 end_date = fake.future_datetime(end_date="+30d")
@@ -60,11 +60,11 @@ class Command(BaseCommand):
                 is_active=random.random() > 0.2
             )
 
-            # Create 1-3 audience records per announcement
+          
             for __ in range(random.randint(1, 3)):
                 audience_type = random.choices(
                     ['student', 'teacher', 'parent'],
-                    weights=[60, 20, 20],  # 60% students, 20% teachers, 20% parents
+                    weights=[60, 20, 20],  
                     k=1
                 )[0]
                 
