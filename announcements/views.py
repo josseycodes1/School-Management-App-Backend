@@ -32,11 +32,11 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
         queryset = Announcement.objects.all()
         now = timezone.now()
 
-        # Only filter for LIST or RETRIEVE when not showing all
+       
         if self.action in ['list', 'retrieve']:
             show_all = self.request.query_params.get('all', None)
 
-            # Admins can see all if requested
+           
             if not (show_all == 'true' and self.request.user.is_staff):
                 queryset = queryset.filter(
                     Q(is_active=True) &
@@ -44,7 +44,7 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
                     (Q(end_date__gte=now) | Q(end_date__isnull=True))
                 )
 
-                # Restrict by audience for non-admin/non-teacher users
+             
                 user_role = self.request.user.role
 
                 if user_role == 'student':
@@ -54,7 +54,7 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
                 elif user_role == 'parent':
                     queryset = queryset.filter(audiences__parent__user=self.request.user)
 
-        # Add search functionality
+        
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(
@@ -65,7 +65,7 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-start_date')
 
     def list(self, request, *args, **kwargs):
-        # Override list to include pagination info in response
+       
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
         
@@ -99,7 +99,7 @@ class AnnouncementAudienceViewSet(viewsets.ModelViewSet):
         return queryset
 
     def list(self, request, *args, **kwargs):
-        # Override list to include pagination info in response
+   
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
         
