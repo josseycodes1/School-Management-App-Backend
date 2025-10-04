@@ -1,4 +1,6 @@
 from rest_framework import viewsets
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 from .models import Announcement, AnnouncementAudience
 from .serializers import (
     AnnouncementSerializer,
@@ -10,13 +12,16 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db.models import Q
 from accounts.permissions import IsAdminOrReadOnly
-from django.db.models import Q
-from django.utils import timezone
 
+class AnnouncementPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class AnnouncementViewSet(viewsets.ModelViewSet):
     serializer_class = AnnouncementSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = AnnouncementPagination
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -49,14 +54,37 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
                 elif user_role == 'parent':
                     queryset = queryset.filter(audiences__parent__user=self.request.user)
 
+        # Add search functionality
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(message__icontains=search)
+            ).distinct()
 
         return queryset.order_by('-start_date')
 
+    def list(self, request, *args, **kwargs):
+        # Override list to include pagination info in response
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
+class AnnouncementAudiencePagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class AnnouncementAudienceViewSet(viewsets.ModelViewSet):
     serializer_class = AnnouncementAudienceSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = AnnouncementAudiencePagination
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -69,3 +97,15 @@ class AnnouncementAudienceViewSet(viewsets.ModelViewSet):
         if announcement_id:
             queryset = queryset.filter(announcement_id=announcement_id)
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        # Override list to include pagination info in response
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+            
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
