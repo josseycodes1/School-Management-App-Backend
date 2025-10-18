@@ -319,7 +319,11 @@ class UserViewSet(viewsets.ModelViewSet):
 
         try:
             user = serializer.save()
-            logger.info("User created via serializer.save() email=%s id=%s", getattr(user, "email", None), getattr(user, "id", None))
+            logger.info(
+                "User created via serializer.save() email=%s id=%s",
+                getattr(user, "email", None),
+                getattr(user, "id", None),
+            )
         except IntegrityError as e:
             logger.warning("IntegrityError on serializer.save(): %s", e)
             # Race condition: duplicate email created between validation and save
@@ -328,70 +332,65 @@ class UserViewSet(viewsets.ModelViewSet):
             if existing and not existing.is_verified:
                 logger.info("Existing unverified user detected, regenerating token for email=%s", existing.email)
                 try:
-                    existing.generate_verification_token()
-                    # re-send verification email
-                    self.send_verification_email(existing)
-                    logger.info("Resent verification email to existing unverified account: %s", existing.email)
+                    token = existing.generate_verification_token()
+                    existing.verification_token = token
+                    existing.save(update_fields=["verification_token"])
+                    verification_link = f"{settings.FRONTEND_URL}/verify-email?token={token}&email={existing.email}"
+                    logger.info("Regenerated token for existing unverified user: %s", existing.email)
+                    # Return token & link in response instead of sending email
                     return Response(
                         {
-                            "message": "Existing unverified account detected — verification token regenerated and email resent.",
+                            "message": "Existing unverified account detected — verification token regenerated.",
                             "email": existing.email,
+                            "token": token,
+                            "verification_link": verification_link,
                         },
-                        status=200
+                        status=200,
                     )
                 except Exception:
-                    logger.exception("Failed to send verification email to existing user; deleting existing user to clean up")
-                    try:
-                        existing.delete()
-                        logger.debug("Deleted existing unverified user: %s", existing.email)
-                    except Exception:
-                        logger.exception("Failed to delete existing user after email send failure")
-                    return Response({"error": "Failed to send verification email. Please try again."}, status=500)
+                    logger.exception("Failed to regenerate token for existing user; leaving existing user intact")
+                    return Response({"error": "Failed to regenerate verification token. Please try again."}, status=500)
             # If it's not the special case, re-raise the integrity error
             logger.exception("IntegrityError re-raised")
             raise
 
-        # Send verification email
+        # Instead of sending email, return the verification token & link in the response
         try:
-            logger.debug("Sending verification email to %s", user.email)
-            self.send_verification_email(user)
-            logger.info("Verification email sent to %s", user.email)
+            token = user.generate_verification_token()
+            user.verification_token = token
+            user.save(update_fields=["verification_token"])
+            verification_link = f"{settings.FRONTEND_URL}/verify-email?token={token}&email={user.email}"
+            logger.info("Verification token generated for %s: %s", user.email, token)
+            # For visibility in logs (console), log the token (you already do this elsewhere)
+            logger.debug("Verification token for %s: %s", user.email, token)
+
             return Response(
                 {
-                    "message": "Verification email sent. Please check your email to complete registration.",
+                    "message": "User created. Verification token generated. Return this token to the frontend.",
                     "email": user.email,
+                    "token": token,
+                    "verification_link": verification_link,
                 },
-                status=201
+                status=201,
             )
-        except Exception as e:
-            logger.exception("Failed to send verification email to newly created user. Deleting user. Error: %s", e)
+        except Exception:
+            logger.exception("Failed to generate/save verification token for newly created user.")
             try:
+                # If token generation fails, attempt to delete user to avoid leaving orphan unverified accounts
                 user.delete()
-                logger.debug("Deleted newly created unverified user after email failure: %s", getattr(user, "email", None))
+                logger.debug("Deleted newly created user after token generation failure: %s", getattr(user, "email", None))
             except Exception:
-                logger.exception("Failed to delete user after email send failure")
-            return Response(
-                {"error": "Failed to send verification email. Please try again."},
-                status=500
-            )
+                logger.exception("Failed to delete user after token generation failure")
+            return Response({"error": "Failed to generate verification token. Please try again."}, status=500)
 
     def send_verification_email(self, user):
-        """Send verification email with token link"""
-        verification_link = f"{settings.FRONTEND_URL}/verify-email?token={user.verification_token}&email={user.email}"
-        logger.debug("Preparing verification email for %s. Link: %s", user.email, verification_link)
-
-        try:
-            send_mail(
-                "Verify Your Email Address",
-                f"Please click this link to verify your email: {verification_link}\n\nOr use this verification token: {user.verification_token}",
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
-            )
-            logger.info("send_mail returned successfully for %s", user.email)
-        except Exception as e:
-            logger.exception("Failed to send verification email to %s: %s", user.email, e)
-            raise  # Re-raise to handle in create method
+        """
+        Disabled: we no longer send emails from the server.
+        Keep this method in case you want to re-enable email sending later,
+        but do not call it from create/resend flows.
+        """
+        logger.debug("send_verification_email called but disabled: %s", getattr(user, "email", None))
+        # intentionally no-op
 
     @action(detail=False, methods=["post"], permission_classes=[AllowAny], url_path="resend_verification")
     def resend_verification(self, request):
@@ -416,15 +415,18 @@ class UserViewSet(viewsets.ModelViewSet):
         try:
             token = user.generate_verification_token()
             user.verification_token = token
-            user.save()
+            user.save(update_fields=["verification_token"])
+            verification_link = f"{settings.FRONTEND_URL}/verify-email?token={token}&email={user.email}"
             logger.info("Resent verification token generated for %s", email)
+            # Return token & link in response instead of sending email
             return Response(
                 {
-                    "message": "Verification token resent successfully.",
+                    "message": "Verification token regenerated successfully.",
                     "token": token,
+                    "verification_link": verification_link,
                     "email": user.email,
                 },
-                status=200
+                status=200,
             )
         except Exception:
             logger.exception("Failed to generate/send token in resend_verification for %s", email)
@@ -445,7 +447,12 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({"error": "User not found"}, status=404)
 
         if user.verification_token != token:
-            logger.warning("verify_email: invalid token for %s (provided=%s expected=%s)", email, token, user.verification_token)
+            logger.warning(
+                "verify_email: invalid token for %s (provided=%s expected=%s)",
+                email,
+                token,
+                user.verification_token,
+            )
             return Response({"error": "Invalid token"}, status=400)
 
         if user.is_verification_token_expired:
