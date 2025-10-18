@@ -25,12 +25,14 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "https://school-management-app-frontend.onrender.com/",
+    "https://school-website-mauve-zeta.vercel.app/"
 ]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000", 
     "http://127.0.0.1:3000",
     "https://school-management-app-frontend.onrender.com",
+    "https://school-website-mauve-zeta.vercel.app/"
 ]
 
 CORS_ALLOW_CREDENTIALS = True 
@@ -195,7 +197,7 @@ SIMPLE_JWT = {
 }
 
 # Frontend URL for verification links
-FRONTEND_URL = 'https://school-management-app-frontend.onrender.com' 
+FRONTEND_URL = 'https://school-website-mauve-zeta.vercel.app'
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
