@@ -42,6 +42,13 @@ from django.utils.crypto import get_random_string
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from django.db.models import Q
+import logging
+import traceback
+from django.db import IntegrityError
+from django.conf import settings
+from rest_framework.decorators import action
+
+logger = logging.getLogger(__name__)
 
 class TeacherPagination(PageNumberPagination):
     page_size = 10
@@ -283,29 +290,48 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
     def get_permissions(self):
+        logger.debug("get_permissions called for action=%s", getattr(self, "action", None))
         if self.action in ['verify_email', 'resend_verification', 'create']:
+            logger.debug("AllowAny permission returned for action=%s", self.action)
             return [AllowAny()]
+        logger.debug("IsAuthenticated permission returned for action=%s", self.action)
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
-    # Optionally clean up really old unverified users
-        User.objects.cleanup_unverified_users(hours_old=24)
+        logger.info("UserViewSet.create called")
+        logger.debug("Request data: %s", request.data)
+
+        # Optionally clean up really old unverified users
+        try:
+            logger.debug("Cleaning up unverified users older than 24 hours")
+            User.objects.cleanup_unverified_users(hours_old=24)
+            logger.debug("cleanup_unverified_users completed")
+        except Exception:
+            logger.exception("Failed while cleaning up unverified users")
 
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+            logger.debug("Serializer valid")
+        except Exception:
+            logger.exception("Serializer validation failed")
+            raise
 
-        # Use serializer.create() (calls UserManager.create_user) which will update existing unverified user
         try:
             user = serializer.save()
+            logger.info("User created via serializer.save() email=%s id=%s", getattr(user, "email", None), getattr(user, "id", None))
         except IntegrityError as e:
+            logger.warning("IntegrityError on serializer.save(): %s", e)
             # Race condition: duplicate email created between validation and save
-            # Attempt to fetch the unverified user and regenerate token
             existing = User.objects.filter(email=request.data.get('email')).first()
+            logger.debug("Existing user found: %s", bool(existing))
             if existing and not existing.is_verified:
-                existing.generate_verification_token()
-                # re-send verification email
+                logger.info("Existing unverified user detected, regenerating token for email=%s", existing.email)
                 try:
+                    existing.generate_verification_token()
+                    # re-send verification email
                     self.send_verification_email(existing)
+                    logger.info("Resent verification email to existing unverified account: %s", existing.email)
                     return Response(
                         {
                             "message": "Existing unverified account detected — verification token regenerated and email resent.",
@@ -314,13 +340,22 @@ class UserViewSet(viewsets.ModelViewSet):
                         status=200
                     )
                 except Exception:
-                    existing.delete()  # optional: clean up if send fails
+                    logger.exception("Failed to send verification email to existing user; deleting existing user to clean up")
+                    try:
+                        existing.delete()
+                        logger.debug("Deleted existing unverified user: %s", existing.email)
+                    except Exception:
+                        logger.exception("Failed to delete existing user after email send failure")
                     return Response({"error": "Failed to send verification email. Please try again."}, status=500)
+            # If it's not the special case, re-raise the integrity error
+            logger.exception("IntegrityError re-raised")
             raise
 
         # Send verification email
         try:
+            logger.debug("Sending verification email to %s", user.email)
             self.send_verification_email(user)
+            logger.info("Verification email sent to %s", user.email)
             return Response(
                 {
                     "message": "Verification email sent. Please check your email to complete registration.",
@@ -329,8 +364,12 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=201
             )
         except Exception as e:
-            # If email fails, delete the unverified user (you already did this in your code)
-            user.delete()
+            logger.exception("Failed to send verification email to newly created user. Deleting user. Error: %s", e)
+            try:
+                user.delete()
+                logger.debug("Deleted newly created unverified user after email failure: %s", getattr(user, "email", None))
+            except Exception:
+                logger.exception("Failed to delete user after email send failure")
             return Response(
                 {"error": "Failed to send verification email. Please try again."},
                 status=500
@@ -339,6 +378,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def send_verification_email(self, user):
         """Send verification email with token link"""
         verification_link = f"{settings.FRONTEND_URL}/verify-email?token={user.verification_token}&email={user.email}"
+        logger.debug("Preparing verification email for %s. Link: %s", user.email, verification_link)
+
         try:
             send_mail(
                 "Verify Your Email Address",
@@ -347,62 +388,78 @@ class UserViewSet(viewsets.ModelViewSet):
                 [user.email],
                 fail_silently=False,
             )
+            logger.info("send_mail returned successfully for %s", user.email)
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Failed to send verification email: {e}")
+            logger.exception("Failed to send verification email to %s: %s", user.email, e)
             raise  # Re-raise to handle in create method
 
     @action(detail=False, methods=["post"], permission_classes=[AllowAny], url_path="resend_verification")
     def resend_verification(self, request):
+        logger.info("resend_verification called")
+        logger.debug("Request data: %s", request.data)
         email = request.data.get("email")
         if not email:
+            logger.warning("resend_verification called without email")
             return Response({"error": "Email is required"}, status=400)
 
         try:
             user = User.objects.get(email=email)
+            logger.debug("Found user for resend: %s (is_verified=%s)", email, user.is_verified)
         except User.DoesNotExist:
+            logger.warning("resend_verification: user not found: %s", email)
             return Response({"error": "User not found"}, status=404)
 
         if user.is_verified:
+            logger.info("resend_verification: user already verified: %s", email)
             return Response({"error": "User already verified."}, status=400)
 
-        
-        token = user.generate_verification_token()
-        user.verification_token = token
-        user.save()
-
-        return Response(
-            {
-                "message": "Verification token resent successfully.",
-                "token": token,
-                "email": user.email,
-            },
-            status=200
-        )
+        try:
+            token = user.generate_verification_token()
+            user.verification_token = token
+            user.save()
+            logger.info("Resent verification token generated for %s", email)
+            return Response(
+                {
+                    "message": "Verification token resent successfully.",
+                    "token": token,
+                    "email": user.email,
+                },
+                status=200
+            )
+        except Exception:
+            logger.exception("Failed to generate/send token in resend_verification for %s", email)
+            return Response({"error": "Failed to resend verification token."}, status=500)
 
     @action(detail=False, methods=['post'], url_path='verify_email', permission_classes=[AllowAny])
     def verify_email(self, request):
+        logger.info("verify_email called")
+        logger.debug("Request data: %s", request.data)
         email = request.data.get("email")
         token = request.data.get("token")
 
         try:
             user = User.objects.get(email=email)
+            logger.debug("User found for verification: %s", email)
         except User.DoesNotExist:
+            logger.warning("verify_email: user not found: %s", email)
             return Response({"error": "User not found"}, status=404)
 
         if user.verification_token != token:
+            logger.warning("verify_email: invalid token for %s (provided=%s expected=%s)", email, token, user.verification_token)
             return Response({"error": "Invalid token"}, status=400)
 
         if user.is_verification_token_expired:
+            logger.warning("verify_email: token expired for %s", email)
             return Response({"error": "Token expired"}, status=400)
 
-        user.verify_user()
+        try:
+            user.verify_user()
+            logger.info("User verified successfully: %s", email)
+        except Exception:
+            logger.exception("Error while verifying user: %s", email)
+            return Response({"error": "Failed to verify user."}, status=500)
 
-        return Response(
-            {"message": "Email verified successfully"},
-            status=200
-        )
+        return Response({"message": "Email verified successfully"}, status=200)
 
     
 # class UserViewSet(viewsets.ModelViewSet):
