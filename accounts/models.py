@@ -46,6 +46,20 @@ class UserManager(BaseUserManager):
             raise ValueError("Superuser must have role of Admin")
             
         return self.create_user(email, password, **extra_fields)
+    
+    def cleanup_unverified_users(self, hours_old=24):
+        """Remove unverified users older than specified hours"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        cutoff_time = timezone.now() - timedelta(hours=hours_old)
+        unverified_users = self.filter(
+            is_verified=False,
+            date_joined__lt=cutoff_time
+        )
+        count = unverified_users.count()
+        unverified_users.delete()
+        return count
 
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

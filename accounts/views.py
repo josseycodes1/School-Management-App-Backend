@@ -288,23 +288,47 @@ class UserViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
+        # Clean up old unverified users before creating new one
+        User.objects.cleanup_unverified_users(hours_old=24)
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-       
-        token = user.generate_verification_token()
-        user.verification_token = token
-        user.save()
+        # Send verification email
+        try:
+            self.send_verification_email(user)
+            return Response(
+                {
+                    "message": "Verification email sent. Please check your email to complete registration.",
+                    "email": user.email,
+                },
+                status=201
+            )
+        except Exception as e:
+            # If email fails, delete the unverified user
+            user.delete()
+            return Response(
+                {"error": "Failed to send verification email. Please try again."},
+                status=500
+            )
 
-        return Response(
-            {
-                "message": "User created successfully. Use the token to verify.",
-                "token": token,
-                "email": user.email,
-            },
-            status=201
-        )
+    def send_verification_email(self, user):
+        """Send verification email with token link"""
+        verification_link = f"{settings.FRONTEND_URL}/verify-email?token={user.verification_token}&email={user.email}"
+        try:
+            send_mail(
+                "Verify Your Email Address",
+                f"Please click this link to verify your email: {verification_link}\n\nOr use this verification token: {user.verification_token}",
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send verification email: {e}")
+            raise  # Re-raise to handle in create method
 
     @action(detail=False, methods=["post"], permission_classes=[AllowAny], url_path="resend_verification")
     def resend_verification(self, request):

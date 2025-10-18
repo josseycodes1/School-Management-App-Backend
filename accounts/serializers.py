@@ -40,16 +40,34 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         try:
+           
+            existing_user = User.objects.filter(
+                email=validated_data['email'],
+                is_verified=False
+            ).first()
+            
+            if existing_user:
+              
+                existing_user.first_name = validated_data['first_name']
+                existing_user.last_name = validated_data['last_name']
+                existing_user.role = validated_data['role']
+                existing_user.set_password(validated_data['password'])
+                existing_user.generate_verification_token()
+                existing_user.save()
+                return existing_user
+            
+         
             user = User.objects.create_user(
                 email=validated_data['email'],
                 password=validated_data['password'],
                 first_name=validated_data['first_name'],
                 last_name=validated_data['last_name'],
                 role=validated_data['role'],
-                is_active=False
+                is_active=False,
+                is_verified=False
             )
 
-            # Print token in development
+           
             if settings.DEBUG:
                 print(f"Verification token for {user.email}: {user.verification_token}")
 
@@ -57,24 +75,13 @@ class UserSerializer(serializers.ModelSerializer):
 
         except IntegrityError as e:
             if 'email' in str(e):
-                raise serializers.ValidationError({'email': 'This email already exists'})
+            
+                if User.objects.filter(email=validated_data['email'], is_verified=True).exists():
+                    raise serializers.ValidationError({'email': 'This email already exists and is verified'})
+                else:
+             
+                    raise serializers.ValidationError({'email': 'This email already exists but is not verified'})
             raise
-
-    def send_verification_email(self, user):
-        """Send verification email with token link"""
-        verification_link = f"{settings.FRONTEND_URL}/verify-email?token={user.verification_token}&email={user.email}"
-        try:
-            send_mail(
-                "Verify Your Email Address",
-                f"Please click this link to verify your email: {verification_link}",
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
-            )
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Failed to send verification email: {e}")
 class AdminProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     
@@ -334,13 +341,16 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             user.set_password(password)
             user.save()
 
-        # Generate admission number
+
+        
         year = datetime.date.today().year
-        prefix = str(year)[-2:]  # e.g., "25"
+        prefix = str(year)[-2:]  
+        
         random_part = get_random_string(4, allowed_chars="0123456789")
         admission_number = f"ADM{prefix}{random_part}"
 
-        # Make sure it's unique
+       
+        
         while StudentProfile.objects.filter(admission_number=admission_number).exists():
             random_part = get_random_string(4, allowed_chars="0123456789")
             admission_number = f"ADM{prefix}{random_part}"
@@ -430,6 +440,7 @@ class StudentOnboardingProgressSerializer(serializers.ModelSerializer):
         filled = sum(required_fields.values())
         total = len(required_fields)
         return int((filled / total) * 100) if total > 0 else 0
+    
 class ParentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     
@@ -440,14 +451,16 @@ class ParentProfileSerializer(serializers.ModelSerializer):
         
     def create(self, validated_data):
         user_data = validated_data.pop("user")
-        # Create user first
+     
+        
         password = user_data.pop("password", None)
         user = User.objects.create(**user_data)
         if password:
             user.set_password(password)
             user.save()
             
-        # Create parent profile
+     
+        
         parent_profile = ParentProfile.objects.create(user=user, **validated_data)
         return parent_profile
     
