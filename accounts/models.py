@@ -26,13 +26,35 @@ class UserManager(BaseUserManager):
             raise ValueError("Users must have an email address")
         
         email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-
-        if not extra_fields.get('is_verified', False):
-            user.generate_verification_token()
+        
+        # Check if unverified user already exists
+        existing_unverified = self.filter(
+            email=email, 
+            is_verified=False
+        ).first()
+        
+        if existing_unverified:
+            # Update existing unverified user instead of creating new one
+            user = existing_unverified
+            for attr, value in extra_fields.items():
+                setattr(user, attr, value)
+            if password:
+                user.set_password(password)
+            user.save(using=self._db)
             
+            # Generate new verification token
+            if not user.is_verified:
+                user.generate_verification_token()
+            return user
+        else:
+            # Create new user
+            user = self.model(email=email, **extra_fields)
+            user.set_password(password)
+            user.save(using=self._db)
+
+            if not extra_fields.get('is_verified', False):
+                user.generate_verification_token()
+                
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):

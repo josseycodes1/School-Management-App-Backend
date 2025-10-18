@@ -288,12 +288,35 @@ class UserViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
-        # Clean up old unverified users before creating new one
+    # Optionally clean up really old unverified users
         User.objects.cleanup_unverified_users(hours_old=24)
-        
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+
+        # Use serializer.create() (calls UserManager.create_user) which will update existing unverified user
+        try:
+            user = serializer.save()
+        except IntegrityError as e:
+            # Race condition: duplicate email created between validation and save
+            # Attempt to fetch the unverified user and regenerate token
+            existing = User.objects.filter(email=request.data.get('email')).first()
+            if existing and not existing.is_verified:
+                existing.generate_verification_token()
+                # re-send verification email
+                try:
+                    self.send_verification_email(existing)
+                    return Response(
+                        {
+                            "message": "Existing unverified account detected — verification token regenerated and email resent.",
+                            "email": existing.email,
+                        },
+                        status=200
+                    )
+                except Exception:
+                    existing.delete()  # optional: clean up if send fails
+                    return Response({"error": "Failed to send verification email. Please try again."}, status=500)
+            raise
 
         # Send verification email
         try:
@@ -306,7 +329,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=201
             )
         except Exception as e:
-            # If email fails, delete the unverified user
+            # If email fails, delete the unverified user (you already did this in your code)
             user.delete()
             return Response(
                 {"error": "Failed to send verification email. Please try again."},

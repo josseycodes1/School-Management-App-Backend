@@ -7,6 +7,7 @@ from django.db import IntegrityError
 from .models import Classes, Subject, Lesson
 from datetime import datetime
 from django.utils.crypto import get_random_string
+from django.db import IntegrityError 
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
@@ -15,6 +16,7 @@ class UserSerializer(serializers.ModelSerializer):
         min_length=8,
         style={'input_type': 'password'}
     )
+    email = serializers.EmailField(required=True, allow_blank=False, validators=[])
     verification_token = serializers.CharField(read_only=True)
 
     class Meta:
@@ -38,25 +40,20 @@ class UserSerializer(serializers.ModelSerializer):
             'role': {'required': True}
         }
 
+    def validate_email(self, value):
+        """Allow existing unverified users but block already-verified emails."""
+        # is there a verified user with this email?
+        if User.objects.filter(email__iexact=value, is_verified=True).exists():
+            raise serializers.ValidationError("A verified user with this email already exists.")
+        # allow unverified users to be updated by UserManager.create_user
+        return value
+
     def create(self, validated_data):
         try:
-           
-            existing_user = User.objects.filter(
-                email=validated_data['email'],
-                is_verified=False
-            ).first()
+            # Clean up old unverified users before creating new one
+            User.objects.cleanup_unverified_users(hours_old=24)
             
-            if existing_user:
-              
-                existing_user.first_name = validated_data['first_name']
-                existing_user.last_name = validated_data['last_name']
-                existing_user.role = validated_data['role']
-                existing_user.set_password(validated_data['password'])
-                existing_user.generate_verification_token()
-                existing_user.save()
-                return existing_user
-            
-         
+            # This will delete any existing unverified user and create a new one
             user = User.objects.create_user(
                 email=validated_data['email'],
                 password=validated_data['password'],
@@ -67,20 +64,37 @@ class UserSerializer(serializers.ModelSerializer):
                 is_verified=False
             )
 
-           
+            # Print token in development
             if settings.DEBUG:
                 print(f"Verification token for {user.email}: {user.verification_token}")
 
             return user
 
         except IntegrityError as e:
+            # This shouldn't happen with our approach, but just in case
             if 'email' in str(e):
-            
-                if User.objects.filter(email=validated_data['email'], is_verified=True).exists():
-                    raise serializers.ValidationError({'email': 'This email already exists and is verified'})
-                else:
-             
-                    raise serializers.ValidationError({'email': 'This email already exists but is not verified'})
+                raise serializers.ValidationError({
+                    'email': ['This email already exists. Please try again.']
+                })
+            raise serializers.ValidationError({'error': [str(e)]})
+        except Exception as e:
+            raise serializers.ValidationError({'error': [str(e)]})
+
+    def send_verification_email(self, user):
+        """Send verification email with token link"""
+        verification_link = f"{settings.FRONTEND_URL}/verify-email?token={user.verification_token}&email={user.email}"
+        try:
+            send_mail(
+                "Verify Your Email Address",
+                f"Please click this link to verify your email: {verification_link}\n\nOr use this verification token: {user.verification_token}",
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send verification email: {e}")
             raise
 class AdminProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
