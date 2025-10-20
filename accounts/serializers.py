@@ -375,13 +375,15 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             **validated_data
         )
         return student_profile
+    
+# In serializers.py - Update StudentOnboardingSerializer
+
 class StudentOnboardingSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', required=False)
     last_name = serializers.CharField(source='user.last_name', required=False)
     photo = serializers.ImageField(required=True)
     admission_number = serializers.CharField(read_only=True)
-
     
     class Meta:
         model = StudentProfile
@@ -389,7 +391,7 @@ class StudentOnboardingSerializer(serializers.ModelSerializer):
             'email', 'first_name', 'last_name', 
             'phone', 'address', 'gender', 'birth_date',
             'photo', 'blood_type', 'parent_name', 'parent_contact',
-            'class_level', 'admission_number'
+            'class_level', 'admission_number', 'medical_notes'
         ]
         extra_kwargs = {
             'gender': {'required': True},
@@ -400,37 +402,122 @@ class StudentOnboardingSerializer(serializers.ModelSerializer):
             'blood_type': {'required': False},
             'phone': {'required': True},
             'address': {'required': True},
+            'medical_notes': {'required': False},
         }
+
+    def validate_phone(self, value):
+        """Validate phone number format"""
+        import re
+        # Remove any non-digit characters
+        cleaned_phone = re.sub(r'\D', '', value)
+        
+        if len(cleaned_phone) < 10 or len(cleaned_phone) > 15:
+            raise serializers.ValidationError("Phone number must be between 10-15 digits")
+        
+        # Check if it contains only digits after cleaning
+        if not cleaned_phone.isdigit():
+            raise serializers.ValidationError("Phone number must contain only digits")
+            
+        return cleaned_phone
+
+    def validate_parent_contact(self, value):
+        """Validate parent contact number format"""
+        import re
+        cleaned_phone = re.sub(r'\D', '', value)
+        
+        if len(cleaned_phone) < 10 or len(cleaned_phone) > 15:
+            raise serializers.ValidationError("Parent contact number must be between 10-15 digits")
+        
+        if not cleaned_phone.isdigit():
+            raise serializers.ValidationError("Parent contact number must contain only digits")
+            
+        return cleaned_phone
+
+    def validate_birth_date(self, value):
+        """Validate birth date is not in future and student is at least 5 years old"""
+        from datetime import date
+        today = date.today()
+        
+        if value > today:
+            raise serializers.ValidationError("Birth date cannot be in the future")
+        
+        # Check if student is at least 5 years old
+        age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+        if age < 5:
+            raise serializers.ValidationError("Student must be at least 5 years old")
+        if age > 25:
+            raise serializers.ValidationError("Student age seems unrealistic")
+            
+        return value
+
+    def validate_photo(self, value):
+        """Validate profile photo"""
+        # Check file size (5MB max)
+        max_size = 5 * 1024 * 1024  # 5MB
+        if value.size > max_size:
+            raise serializers.ValidationError("Profile photo must be less than 5MB")
+        
+        # Check file type
+        allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+        if value.content_type not in allowed_types:
+            raise serializers.ValidationError("Profile photo must be JPEG, PNG, or GIF")
+        
+        return value
+
+    def validate(self, data):
+        """Cross-field validation"""
+        # Ensure phone and parent contact are different
+        phone = data.get('phone', '')
+        parent_contact = data.get('parent_contact', '')
+        
+        if phone and parent_contact and phone == parent_contact:
+            raise serializers.ValidationError({
+                'parent_contact': 'Parent contact number must be different from student phone number'
+            })
+        
+        return data
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
         user = instance.user
         
+        # Update user fields
         for attr, value in user_data.items():
             setattr(user, attr, value)
         user.save()
         
+        # Update profile fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         
+        # Check if all required fields are filled to mark as onboarded
         required_fields = [
             'phone', 'address', 'gender',
             'birth_date', 'parent_name', 'parent_contact',
             'class_level', 'photo'
         ]
-        if all(getattr(instance, field) for field in required_fields):
-            instance.is_onboarded = True
         
+        # Check if all required fields have values
+        all_required_filled = all(
+            getattr(instance, field) for field in required_fields
+            if getattr(instance, field) not in [None, '']
+        )
+        
+        instance.is_onboarded = all_required_filled
         instance.save()
         return instance
+    
+# In serializers.py - Update StudentOnboardingProgressSerializer
+
 class StudentOnboardingProgressSerializer(serializers.ModelSerializer):
     progress = serializers.SerializerMethodField()
     completed = serializers.SerializerMethodField()
     required_fields = serializers.SerializerMethodField()
+    validation_errors = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentProfile
-        fields = ['progress', 'completed', 'required_fields']
+        fields = ['progress', 'completed', 'required_fields', 'validation_errors']
 
     def get_required_fields(self, obj):
         return {
@@ -454,6 +541,124 @@ class StudentOnboardingProgressSerializer(serializers.ModelSerializer):
         filled = sum(required_fields.values())
         total = len(required_fields)
         return int((filled / total) * 100) if total > 0 else 0
+
+    def get_validation_errors(self, obj):
+        """Get specific validation errors for each field"""
+        errors = {}
+        
+        # Phone validation
+        if obj.phone:
+            import re
+            cleaned_phone = re.sub(r'\D', '', obj.phone)
+            if len(cleaned_phone) < 10 or len(cleaned_phone) > 15 or not cleaned_phone.isdigit():
+                errors['phone'] = 'Phone number must be 10-15 digits'
+        
+        # Parent contact validation
+        if obj.parent_contact:
+            import re
+            cleaned_contact = re.sub(r'\D', '', obj.parent_contact)
+            if len(cleaned_contact) < 10 or len(cleaned_contact) > 15 or not cleaned_contact.isdigit():
+                errors['parent_contact'] = 'Parent contact must be 10-15 digits'
+        
+        # Birth date validation
+        if obj.birth_date:
+            from datetime import date
+            today = date.today()
+            if obj.birth_date > today:
+                errors['birth_date'] = 'Birth date cannot be in future'
+            else:
+                age = today.year - obj.birth_date.year - ((today.month, today.day) < (obj.birth_date.month, obj.birth_date.day))
+                if age < 5:
+                    errors['birth_date'] = 'Student must be at least 5 years old'
+                elif age > 25:
+                    errors['birth_date'] = 'Student age seems unrealistic'
+        
+        # Check if phone and parent contact are different
+        if obj.phone and obj.parent_contact and obj.phone == obj.parent_contact:
+            errors['parent_contact'] = 'Must be different from student phone'
+        
+        return errors
+    
+# class StudentOnboardingSerializer(serializers.ModelSerializer):
+#     email = serializers.EmailField(source='user.email', read_only=True)
+#     first_name = serializers.CharField(source='user.first_name', required=False)
+#     last_name = serializers.CharField(source='user.last_name', required=False)
+#     photo = serializers.ImageField(required=True)
+#     admission_number = serializers.CharField(read_only=True)
+
+    
+#     class Meta:
+#         model = StudentProfile
+#         fields = [
+#             'email', 'first_name', 'last_name', 
+#             'phone', 'address', 'gender', 'birth_date',
+#             'photo', 'blood_type', 'parent_name', 'parent_contact',
+#             'class_level', 'admission_number'
+#         ]
+#         extra_kwargs = {
+#             'gender': {'required': True},
+#             'birth_date': {'required': True},
+#             'parent_name': {'required': True},
+#             'parent_contact': {'required': True},
+#             'class_level': {'required': True},
+#             'blood_type': {'required': False},
+#             'phone': {'required': True},
+#             'address': {'required': True},
+#         }
+
+#     def update(self, instance, validated_data):
+#         user_data = validated_data.pop('user', {})
+#         user = instance.user
+        
+#         for attr, value in user_data.items():
+#             setattr(user, attr, value)
+#         user.save()
+        
+#         for attr, value in validated_data.items():
+#             setattr(instance, attr, value)
+        
+#         required_fields = [
+#             'phone', 'address', 'gender',
+#             'birth_date', 'parent_name', 'parent_contact',
+#             'class_level', 'photo'
+#         ]
+#         if all(getattr(instance, field) for field in required_fields):
+#             instance.is_onboarded = True
+        
+#         instance.save()
+#         return instance
+
+# class StudentOnboardingProgressSerializer(serializers.ModelSerializer):
+#     progress = serializers.SerializerMethodField()
+#     completed = serializers.SerializerMethodField()
+#     required_fields = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = StudentProfile
+#         fields = ['progress', 'completed', 'required_fields']
+
+#     def get_required_fields(self, obj):
+#         return {
+#             'phone': bool(obj.phone),
+#             'address': bool(obj.address),
+#             'gender': bool(obj.gender),
+#             'birth_date': bool(obj.birth_date),
+#             'parent_name': bool(obj.parent_name),
+#             'parent_contact': bool(obj.parent_contact),
+#             'class_level': bool(obj.class_level),
+#             'photo': bool(obj.photo),
+#             'admission_number': bool(obj.admission_number)
+#         }
+
+#     def get_completed(self, obj):
+#         required_fields = self.get_required_fields(obj)
+#         return all(required_fields.values())
+
+#     def get_progress(self, obj):
+#         required_fields = self.get_required_fields(obj)
+#         filled = sum(required_fields.values())
+#         total = len(required_fields)
+#         return int((filled / total) * 100) if total > 0 else 0
     
 class ParentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer()
