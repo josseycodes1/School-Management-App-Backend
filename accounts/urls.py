@@ -31,12 +31,11 @@ router.register(r'parents', ParentProfileViewSet, basename='parent')
 router.register(r'admins', AdminProfileViewSet, basename='admin')
 router.register(r'classes', ClassesViewSet, basename='classes')
 router.register(r'subjects', SubjectViewSet, basename='subject')
-# GET /api/accounts/subjects/by_class/?class_id=1
-# GET /api/accounts/subjects/my_subjects/
+
 
 
 urlpatterns = [
-    #Custom endpoints FIRST
+    
     path('user-counts/', views.user_counts, name='user-counts'),
     path('user/<uuid:user_id>/', views.get_user_details, name='user-details'),
     path('students/onboarding/', StudentOnboardingView.as_view(), name='student-onboarding'),
@@ -47,15 +46,15 @@ urlpatterns = [
     path('parents/onboarding/progress/', ParentOnboardingProgressView.as_view(), name='parent-onboarding-progress'),
 
 
-    # Router URLs after
+  
     path('', include(router.urls)),
 
-    # Authentication
+  
     path('login/', LoginAPIView.as_view(), name='login'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
-    # Password Reset
+  
     path('password_reset/', PasswordResetView.as_view(), name='password-reset'),
     path('password_reset/verify/', PasswordResetVerifyView.as_view(), name='password-reset-verify'),
     path('password_reset/resend/', PasswordResetResendView.as_view(), name='password-reset-resend'),

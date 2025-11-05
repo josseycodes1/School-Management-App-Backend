@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, AdminProfile, ParentProfile, TeacherProfile, StudentProfile
+from .models import User, AdminProfile, ParentProfile, TeacherProfile, StudentProfile, SocialMediaLink
 from .models import Subject, Classes, Lesson
 
 class CustomUserAdmin(UserAdmin):
@@ -36,6 +36,14 @@ admin.site.register(ParentProfile, ProfileAdmin)
 admin.site.register(TeacherProfile, ProfileAdmin)
 admin.site.register(StudentProfile, ProfileAdmin)
 
+@admin.register(SocialMediaLink)
+class SocialMediaLinkAdmin(admin.ModelAdmin):
+    list_display = ('platform', 'url', 'is_active', 'created_at')
+    list_filter = ('is_active', 'platform')
+    list_editable = ('is_active', 'url')
+    search_fields = ('platform', 'url')
+    ordering = ('platform',)
+    
 @admin.register(Classes)
 class ClassesAdmin(admin.ModelAdmin):
     list_display = ('name', 'get_teacher', 'created_at')

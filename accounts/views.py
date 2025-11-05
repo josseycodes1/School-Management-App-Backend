@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.utils import timezone
 from django.db import connection
-from .models import User, TeacherProfile, StudentProfile, ParentProfile, AdminProfile, Classes, Subject, Lesson
+from .models import User, TeacherProfile, StudentProfile, ParentProfile, AdminProfile, Classes, Subject, Lesson, SocialMediaLink
 from .serializers import (
     UserSerializer, 
     TeacherProfileSerializer, 
@@ -21,7 +21,8 @@ from .serializers import (
     ClassesReadSerializer, 
     ClassesWriteSerializer,
     SubjectReadSerializer,
-    SubjectWriteSerializer
+    SubjectWriteSerializer,
+    SocialMediaLinkSerializer
 )
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -949,7 +950,23 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         return request.user and request.user.is_staff
+class SocialMediaLinkViewSet(viewsets.ReadOnlyModelViewSet):
 
+    queryset = SocialMediaLink.objects.filter(is_active=True)
+    serializer_class = SocialMediaLinkSerializer
+    permission_classes = [AllowAny] 
+    pagination_class = None  
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        
+        
+        social_links = {}
+        for item in serializer.data:
+            social_links[item['platform']] = item['url']
+        
+        return Response(social_links)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_current_user_profile(request):

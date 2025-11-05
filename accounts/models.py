@@ -292,6 +292,28 @@ class Subject(models.Model):
     def __str__(self):
         return f"{self.name} - {self.assigned_class.name}"
 
+class SocialMediaLink(models.Model):
+    PLATFORM_CHOICES = [
+        ('facebook', 'Facebook'),
+        ('twitter', 'Twitter'),
+        ('instagram', 'Instagram'),
+        ('linkedin', 'LinkedIn'),
+        ('youtube', 'YouTube'),
+    ]
+    
+    platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES, unique=True)
+    url = models.URLField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Social Media Link"
+        verbose_name_plural = "Social Media Links"
+        ordering = ['platform']
+    
+    def __str__(self):
+        return f"{self.get_platform_display()}: {self.url}"
 class Lesson(models.Model):
     title = models.CharField(max_length=200)
     content = models.TextField()

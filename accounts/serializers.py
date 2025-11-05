@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, AdminProfile, TeacherProfile, StudentProfile, ParentProfile
+from .models import User, AdminProfile, TeacherProfile, StudentProfile, ParentProfile, SocialMediaLink
 from django.core.mail import send_mail
 from django.conf import settings
 import uuid
@@ -457,7 +457,15 @@ class StudentOnboardingProgressSerializer(serializers.ModelSerializer):
         filled = sum(required_fields.values())
         total = len(required_fields)
         return int((filled / total) * 100) if total > 0 else 0
+  
+class SocialMediaLinkSerializer(serializers.ModelSerializer):
+    platform_display = serializers.CharField(source='get_platform_display', read_only=True)
     
+    class Meta:
+        model = SocialMediaLink
+        fields = ['platform', 'platform_display', 'url', 'is_active']
+        read_only_fields = ['platform_display']
+          
 class ParentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     

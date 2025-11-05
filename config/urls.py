@@ -26,7 +26,7 @@ urlpatterns = [
     path('api/announcements/', include('announcements.urls')),
     path('api/attendance/', include('attendance.urls')),
     path('api/events/', include('events.urls')),
-    
+     path('api/social-media/', include('accounts.social_urls')),
     #documentations
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema')),
