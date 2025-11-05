@@ -950,8 +950,8 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         return request.user and request.user.is_staff
-class SocialMediaLinkViewSet(viewsets.ReadOnlyModelViewSet):
 
+class SocialMediaLinkViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = SocialMediaLink.objects.filter(is_active=True)
     serializer_class = SocialMediaLinkSerializer
     permission_classes = [AllowAny] 
@@ -960,7 +960,6 @@ class SocialMediaLinkViewSet(viewsets.ReadOnlyModelViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         serializer = self.get_serializer(queryset, many=True)
-        
         
         social_links = {}
         for item in serializer.data:
