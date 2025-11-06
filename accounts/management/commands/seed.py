@@ -37,7 +37,7 @@ class Command(BaseCommand):
         self.create_superuser()
         self.create_academic_years()
         self.create_classes()
-        self.create_subjects()  # Moved inside handle() method
+        self.create_subjects()  
         self.create_teachers(count)
         self.create_parents(count)
         self.create_students(count)
@@ -47,7 +47,7 @@ class Command(BaseCommand):
         User.objects.all().delete()
         Classes.objects.all().delete()
         AcademicYear.objects.all().delete()
-        Subject.objects.all().delete()  # Added to clear subjects
+        Subject.objects.all().delete() 
 
     def create_superuser(self):
         if not User.objects.filter(role=UserRole.ADMIN).exists():

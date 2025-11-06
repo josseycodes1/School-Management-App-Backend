@@ -9,18 +9,14 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
-
-
 urlpatterns = [
     path("admin/", admin.site.urls),
-   
-    
-    # Authentication endpoints
+
     path('api/auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
-    # API endpoints
+
     path('api/accounts/', include('accounts.urls')),
     path('api/assessment/', include('assessment.urls')),
     path('api/announcements/', include('announcements.urls')),
@@ -28,7 +24,7 @@ urlpatterns = [
     path('api/events/', include('events.urls')),
     path('api/social-media/', include('accounts.social_urls')),
     
-    #documentations
+
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema')),
 

@@ -34,16 +34,16 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             show_all = self.request.query_params.get('all', None)
 
-            # If user is staff and explicitly requests all announcements, show everything
+            
             if not (show_all == 'true' and user.is_staff):
-                # Filter by active status and date range
+                
                 queryset = queryset.filter(
                     Q(is_active=True) &
                     Q(start_date__lte=now) &
                     (Q(end_date__gte=now) | Q(end_date__isnull=True))
                 )
 
-                # Filter by user's role
+               
                 user_role = user.role
                 if user_role == 'student':
                     queryset = queryset.filter(target_students=True)
@@ -52,7 +52,7 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
                 elif user_role == 'parent':
                     queryset = queryset.filter(target_parents=True)
 
-        # Search functionality
+        
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(

@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 import cloudinary
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 LOG_DIR = os.path.join(BASE_DIR, "logs")
@@ -30,12 +30,12 @@ LOGGING = {
         },
     },
     "loggers": {
-        # root logger
+    
         "": {
             "handlers": ["console", "file"],
             "level": "DEBUG",
         },
-        # keep Django's default loggers configurable
+        
         "django": {
             "handlers": ["console", "file"],
             "level": "INFO",
@@ -43,9 +43,6 @@ LOGGING = {
         },
     },
 }
-
-
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/

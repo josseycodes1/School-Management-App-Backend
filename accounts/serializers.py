@@ -41,19 +41,18 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def validate_email(self, value):
-        """Allow existing unverified users but block already-verified emails."""
-        # is there a verified user with this email?
+       
         if User.objects.filter(email__iexact=value, is_verified=True).exists():
             raise serializers.ValidationError("A verified user with this email already exists.")
-        # allow unverified users to be updated by UserManager.create_user
+        
         return value
 
     def create(self, validated_data):
         try:
-            # Clean up old unverified users before creating new one
+          
             User.objects.cleanup_unverified_users(hours_old=24)
             
-            # This will delete any existing unverified user and create a new one
+           
             user = User.objects.create_user(
                 email=validated_data['email'],
                 password=validated_data['password'],
@@ -64,14 +63,14 @@ class UserSerializer(serializers.ModelSerializer):
                 is_verified=False
             )
 
-            # Print token in development
+           
             if settings.DEBUG:
                 print(f"Verification token for {user.email}: {user.verification_token}")
 
             return user
 
         except IntegrityError as e:
-            # This shouldn't happen with our approach, but just in case
+            
             if 'email' in str(e):
                 raise serializers.ValidationError({
                     'email': ['This email already exists. Please try again.']
@@ -81,7 +80,7 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'error': [str(e)]})
 
     def send_verification_email(self, user):
-        """Send verification email with token link"""
+       
         verification_link = f"{settings.FRONTEND_URL}/verify-email?token={user.verification_token}&email={user.email}"
         try:
             send_mail(
@@ -112,14 +111,14 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
         
     def create(self, validated_data):
         user_data = validated_data.pop("user")
-        # Create user first
+        
         password = user_data.pop("password", None)
         user = User.objects.create(**user_data)
         if password:
             user.set_password(password)
             user.save()
 
-        # Create teacher profile
+      
         teacher_profile = TeacherProfile.objects.create(user=user, **validated_data)
         return teacher_profile
 
@@ -172,12 +171,12 @@ class TeacherOnboardingSerializer(serializers.ModelSerializer):
         user_data = validated_data.pop('user', {})
         user = instance.user
         
-        # Update user fields
+       
         for attr, value in user_data.items():
             setattr(user, attr, value)
         user.save()
         
-        # Update profile fields
+       
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
@@ -222,7 +221,7 @@ class ClassesReadSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
 
 class ClassesWriteSerializer(serializers.ModelSerializer):
-    """Serializer for WRITE operations - accepts teacher ID"""
+   
     teacher_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     
     class Meta:
@@ -248,7 +247,7 @@ class ClassesWriteSerializer(serializers.ModelSerializer):
         teacher_id = validated_data.pop('teacher_id', None)
         teacher = None
         
-        if teacher_id is not None:  # Handle both setting and nullifying
+        if teacher_id is not None:  
             if teacher_id:
                 try:
                     teacher = TeacherProfile.objects.get(id=teacher_id)
@@ -256,7 +255,7 @@ class ClassesWriteSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({
                         'teacher_id': f"Teacher with ID {teacher_id} does not exist."
                     })
-            # If teacher_id is null/empty, teacher remains None
+            
         
         instance.name = validated_data.get('name', instance.name)
         instance.teacher = teacher
@@ -264,7 +263,7 @@ class ClassesWriteSerializer(serializers.ModelSerializer):
         return instance
 
 class SubjectReadSerializer(serializers.ModelSerializer):
-    """Serializer for READ operations - includes nested teacher details"""
+   
     teacher = TeacherProfileSerializer(read_only=True)
     assigned_class_name = serializers.CharField(source='assigned_class.name', read_only=True)
     
@@ -274,7 +273,7 @@ class SubjectReadSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
 
 class SubjectWriteSerializer(serializers.ModelSerializer):
-    """Serializer for WRITE operations - accepts teacher ID and class ID"""
+   
     teacher_id = serializers.PrimaryKeyRelatedField(
         queryset=TeacherProfile.objects.all(),
         source='teacher',
@@ -289,12 +288,12 @@ class SubjectWriteSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
     
     def validate(self, data):
-        """Validate that the subject name is unique within the same class"""
+        
         name = data.get('name')
         assigned_class = data.get('assigned_class')
         
         if name and assigned_class:
-            # Check if subject with same name already exists in this class
+           
             existing_subject = Subject.objects.filter(
                 name=name, 
                 assigned_class=assigned_class
@@ -317,14 +316,14 @@ class LessonSerializer(serializers.ModelSerializer):
         
     def create(self, validated_data):
         user_data = validated_data.pop("user")
-        # Create user first
+        
         password = user_data.pop("password", None)
         user = User.objects.create(**user_data)
         if password:
             user.set_password(password)
             user.save()
             
-         # Create teacher profile
+         
         teacher_profile = TeacherProfile.objects.create(user=user, **validated_data)
         return teacher_profile
     
@@ -375,7 +374,6 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             **validated_data
         )
         return student_profile
-    
     
 class StudentOnboardingSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
@@ -538,12 +536,12 @@ class ParentOnboardingSerializer(serializers.ModelSerializer):
         user_data = validated_data.pop('user', {})
         user = instance.user
         
-        # Update user fields
+      
         for attr, value in user_data.items():
             setattr(user, attr, value)
         user.save()
         
-        # Update profile fields
+        
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()

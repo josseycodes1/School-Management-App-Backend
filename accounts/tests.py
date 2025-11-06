@@ -11,7 +11,7 @@ class EmailVerificationTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         
-        # Create user with valid token (created now)
+       
         self.valid_user = User.objects.create_user(
             email='valid@example.com',
             password='validpass123',
@@ -22,7 +22,7 @@ class EmailVerificationTest(TestCase):
         self.valid_user.verification_token_created_at = timezone.now()
         self.valid_user.save()
         
-        # Create user with expired token (created 25 hours ago)
+       
         self.expired_user = User.objects.create_user(
             email='expired@example.com',
             password='expiredpass123',
@@ -41,7 +41,7 @@ class EmailVerificationTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['message'], 'Email successfully verified')
         
-        # Refresh user from db
+        
         self.valid_user.refresh_from_db()
         self.assertTrue(self.valid_user.is_verified)
         self.assertTrue(self.valid_user.is_active)
@@ -49,14 +49,14 @@ class EmailVerificationTest(TestCase):
         self.assertIsNone(self.valid_user.verification_token_created_at)
 
     def test_expired_token(self):
-        """Test verifying with expired token"""
+        
         url = reverse('user-verify-email') + '?token=expired-token'
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['error'], 'Verification link has expired')
         
-        # Refresh user from db
+       
         self.expired_user.refresh_from_db()
         self.assertFalse(self.expired_user.is_verified)
         self.assertFalse(self.expired_user.is_active)
@@ -64,7 +64,7 @@ class EmailVerificationTest(TestCase):
         self.assertIsNone(self.expired_user.verification_token_created_at)
 
     def test_invalid_token(self):
-        """Test verifying with invalid token"""
+        
         url = reverse('user-verify-email') + '?token=invalid-token'
         response = self.client.get(url)
         
@@ -72,7 +72,7 @@ class EmailVerificationTest(TestCase):
         self.assertEqual(response.data['error'], 'Invalid verification token')
 
     def test_missing_token(self):
-        """Test verifying without token"""
+       
         url = reverse('user-verify-email')
         response = self.client.get(url)
         

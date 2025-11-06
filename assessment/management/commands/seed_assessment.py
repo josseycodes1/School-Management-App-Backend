@@ -51,7 +51,7 @@ class Command(BaseCommand):
     def create_grades(self):
         self.stdout.write("📊 Creating grade levels...")
         try:
-            # Check if grades already exist
+           
             if Grade.objects.exists():
                 self.stdout.write("📊 Grade levels already exist, skipping...")
                 return
@@ -74,7 +74,7 @@ class Command(BaseCommand):
             
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"❌ Error creating grades: {e}"))
-            # Don't proceed if grades fail - they're essential
+            
             raise
 
     def create_exams_and_assignments(self, count_per_subject):
@@ -92,7 +92,7 @@ class Command(BaseCommand):
         for subject in subjects:
             self.stdout.write(f"   Processing subject: {subject.name}")
             
-            # Create exams for this subject
+           
             for i in range(count_per_subject):
                 try:
                     exam_date = timezone.make_aware(fake.future_datetime(end_date="+60d"))
@@ -107,7 +107,7 @@ class Command(BaseCommand):
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f"❌ Error creating exam for {subject.name}: {e}"))
 
-            # Create assignments for this subject
+            
             for i in range(count_per_subject):
                 try:
                     due_date = timezone.make_aware(fake.future_datetime(end_date="+30d"))
@@ -136,10 +136,10 @@ class Command(BaseCommand):
 
         results_created = 0
 
-        # Create results for exams - limit to avoid overwhelming
+       
         for exam in exams:
             try:
-                # Only select a few students per exam to reduce load
+                
                 sample_size = min(5, len(students))
                 for student in random.sample(students, k=sample_size):
                     Result.objects.create(
@@ -151,10 +151,10 @@ class Command(BaseCommand):
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f"❌ Error creating results for exam {exam.title}: {e}"))
 
-        # Create results for assignments
+        
         for assignment in assignments:
             try:
-                # Only select a few students per assignment
+                
                 sample_size = min(5, len(students))
                 for student in random.sample(students, k=sample_size):
                     Result.objects.create(

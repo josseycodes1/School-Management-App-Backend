@@ -20,18 +20,18 @@ class ExamReadSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ExamWriteSerializer(serializers.ModelSerializer):
-    # Use PrimaryKeyRelatedField for write operations
+   
     subject = serializers.PrimaryKeyRelatedField(
         queryset=Subject.objects.all(),
         required=True
     )
     teacher = serializers.PrimaryKeyRelatedField(
         queryset=TeacherProfile.objects.all(),
-        required=False  # Made required=False since it will be set automatically
+        required=False  
     )
     grade = serializers.PrimaryKeyRelatedField(
         queryset=Grade.objects.all(),
-        required=False  # Made optional since we're replacing it with time fields
+        required=False  
     )
     
     class Meta:

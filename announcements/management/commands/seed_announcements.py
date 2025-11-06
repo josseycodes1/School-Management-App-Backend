@@ -7,7 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 import logging
 
-# Disable Faker debug logging
+
 logging.getLogger('faker').setLevel(logging.ERROR)
 
 fake = Faker()
@@ -29,7 +29,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        # Check if we have user profiles (optional, but good for reference)
+        
         required_models = [StudentProfile, TeacherProfile, ParentProfile]
         for model in required_models:
             if not model.objects.exists():
@@ -43,35 +43,35 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"✅ Created {created_count} announcements with role-based audience targeting!"))
 
     def create_announcements(self, count):
-        # Define possible audience combinations
+      
         audience_combinations = [
-            # Students only
+           
             {'target_students': True, 'target_teachers': False, 'target_parents': False},
-            # Teachers only
+           
             {'target_students': False, 'target_teachers': True, 'target_parents': False},
-            # Parents only
+            
             {'target_students': False, 'target_teachers': False, 'target_parents': True},
-            # Students and Teachers
+            
             {'target_students': True, 'target_teachers': True, 'target_parents': False},
-            # Students and Parents
+            
             {'target_students': True, 'target_teachers': False, 'target_parents': True},
-            # Teachers and Parents
+            
             {'target_students': False, 'target_teachers': True, 'target_parents': True},
-            # All roles
+            
             {'target_students': True, 'target_teachers': True, 'target_parents': True},
         ]
 
-        # Weights for different combinations (students are more common targets)
+       
         weights = [30, 15, 10, 15, 10, 5, 15]
 
         created_count = 0
         for i in range(count):
             try:
-                # Choose audience combination
+               
                 audience_config = random.choices(audience_combinations, weights=weights, k=1)[0]
                 
-                # Set start date (some in past, most in recent past/future)
-                if i < 5:  # First 5 announcements started in the past
+               
+                if i < 5:  
                     start_date = self.get_naive_datetime(fake.past_datetime(start_date="-30d"))
                 else:
                     if random.random() > 0.7:
@@ -79,12 +79,12 @@ class Command(BaseCommand):
                     else:
                         start_date = timezone.now()
                 
-                # Set end date (some have no end date, some in future)
+               
                 end_date = None
-                if random.random() > 0.4:  # 60% have end dates
+                if random.random() > 0.4:  
                     end_date = start_date + timedelta(days=random.randint(1, 60))
                 
-                # Create announcement types with appropriate titles and messages
+                
                 announcement_type = random.choice([
                     'general', 'exam', 'holiday', 'event', 'urgent', 'academic'
                 ])
@@ -96,7 +96,7 @@ class Command(BaseCommand):
                     message=message,
                     start_date=start_date,
                     end_date=end_date,
-                    is_active=random.random() > 0.1,  # 90% are active
+                    is_active=random.random() > 0.1,  
                     **audience_config
                 )
                 
@@ -113,13 +113,13 @@ class Command(BaseCommand):
         return created_count
 
     def get_naive_datetime(self, dt):
-        """Convert timezone-aware datetime to naive datetime for make_aware"""
+       
         if timezone.is_aware(dt):
             return timezone.make_naive(dt)
         return dt
 
     def generate_announcement_content(self, announcement_type, audience_config):
-        """Generate appropriate title and message based on announcement type and audience"""
+       
         
         if announcement_type == 'general':
             titles = [
@@ -156,7 +156,7 @@ class Command(BaseCommand):
                 "Emergency School Closure",
                 "Urgent Update"
             ]
-        else:  # academic
+        else: 
             titles = [
                 "Academic Calendar Update",
                 "Curriculum Changes Notice",
@@ -166,7 +166,7 @@ class Command(BaseCommand):
 
         title = random.choice(titles)
         
-        # Generate appropriate message based on audience
+       
         audience_roles = []
         if audience_config['target_students']:
             audience_roles.append('students')
@@ -186,7 +186,7 @@ class Command(BaseCommand):
         
         message_content = fake.paragraph(nb_sentences=random.randint(3, 8))
         
-        # Add appropriate closing based on audience
+        
         if audience_config['target_parents'] and not audience_config['target_students']:
             closings = [
                 "\n\nThank you for your cooperation and support.",

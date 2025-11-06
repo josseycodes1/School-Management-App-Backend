@@ -40,7 +40,6 @@ class Exam(models.Model):
             
         super().save(*args, **kwargs)
 
-
 class Assignment(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField()
@@ -53,7 +52,6 @@ class Assignment(models.Model):
     def __str__(self):
         return self.title
 
-# Result model
 class Result(models.Model):
     student = models.ForeignKey(StudentProfile, on_delete=models.SET_NULL, null=True, blank=True)
     exam = models.ForeignKey(Exam, on_delete=models.SET_NULL, null=True, blank=True)

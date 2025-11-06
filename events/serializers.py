@@ -33,7 +33,7 @@ class EventParticipantCreateSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
-        # Ensure at least one participant type is selected
+   
         if not any([data.get('student'), data.get('teacher'), data.get('parent')]):
             raise serializers.ValidationError(
                 "At least one participant (student, teacher or parent) must be specified"

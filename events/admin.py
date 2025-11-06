@@ -6,7 +6,7 @@ class EventParticipantInline(admin.TabularInline):
     extra = 1
     fields = ('get_participant', 'registered_at')
     readonly_fields = ('get_participant', 'registered_at')
-    max_num = 0  # Makes it read-only for display purposes
+    max_num = 0 
 
     def get_participant(self, obj):
         participant = obj.student or obj.teacher or obj.parent
@@ -14,7 +14,7 @@ class EventParticipantInline(admin.TabularInline):
     get_participant.short_description = 'Participant'
 
     def has_add_permission(self, request, obj=None):
-        return False  # Disable adding through inline
+        return False  
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):

@@ -11,7 +11,7 @@ class Announcement(models.Model):
     end_date = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     
-    # Role-based audience fields
+ 
     target_students = models.BooleanField(default=False)
     target_teachers = models.BooleanField(default=False)
     target_parents = models.BooleanField(default=False)

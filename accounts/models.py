@@ -27,14 +27,14 @@ class UserManager(BaseUserManager):
         
         email = self.normalize_email(email)
         
-        # Check if unverified user already exists
+        
         existing_unverified = self.filter(
             email=email, 
             is_verified=False
         ).first()
         
         if existing_unverified:
-            # Update existing unverified user instead of creating new one
+           
             user = existing_unverified
             for attr, value in extra_fields.items():
                 setattr(user, attr, value)
@@ -42,12 +42,12 @@ class UserManager(BaseUserManager):
                 user.set_password(password)
             user.save(using=self._db)
             
-            # Generate new verification token
+           
             if not user.is_verified:
                 user.generate_verification_token()
             return user
         else:
-            # Create new user
+            
             user = self.model(email=email, **extra_fields)
             user.set_password(password)
             user.save(using=self._db)
@@ -70,7 +70,7 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
     
     def cleanup_unverified_users(self, hours_old=24):
-        """Remove unverified users older than specified hours"""
+        
         from django.utils import timezone
         from datetime import timedelta
         
@@ -236,11 +236,11 @@ class StudentProfile(ProfileMixin):
     def save(self, *args, **kwargs):
         if not self.admission_number:
             year = date.today().year
-            prefix = str(year)[-2:]  # e.g., "25"
+            prefix = str(year)[-2:] 
             random_part = get_random_string(4, allowed_chars="0123456789")
             admission_number = f"ADM{prefix}{random_part}"
 
-            # Ensure uniqueness
+            
             while StudentProfile.objects.filter(admission_number=admission_number).exists():
                 random_part = get_random_string(4, allowed_chars="0123456789")
                 admission_number = f"ADM{prefix}{random_part}"
@@ -250,7 +250,7 @@ class StudentProfile(ProfileMixin):
         super().save(*args, **kwargs)
    
 class AcademicYear(models.Model):
-    name = models.CharField(max_length=20, unique=True)  # "2024/2025"
+    name = models.CharField(max_length=20, unique=True)  
     current = models.BooleanField(default=False)
     
     def __str__(self):
@@ -259,7 +259,7 @@ class AcademicYear(models.Model):
 class Classes(models.Model):
     name = models.CharField(max_length=50, unique=True)
     teacher = models.ForeignKey(
-        'accounts.TeacherProfile',  # Changed to string reference
+        'accounts.TeacherProfile',  
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -273,14 +273,14 @@ class Classes(models.Model):
 class Subject(models.Model):
     name = models.CharField(max_length=100)
     teacher = models.ForeignKey(
-        'accounts.TeacherProfile',  # Changed to string reference
+        'accounts.TeacherProfile',  
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='subjects'
     )
     assigned_class = models.ForeignKey(
-        'Classes',  # Self-reference
+        'Classes',  
         on_delete=models.CASCADE,
         related_name='subjects'
     )

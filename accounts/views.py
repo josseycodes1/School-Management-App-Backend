@@ -302,7 +302,7 @@ class UserViewSet(viewsets.ModelViewSet):
         logger.info("UserViewSet.create called")
         logger.debug("Request data: %s", request.data)
 
-        # Optionally clean up really old unverified users
+        
         try:
             logger.debug("Cleaning up unverified users older than 24 hours")
             User.objects.cleanup_unverified_users(hours_old=24)
@@ -327,7 +327,7 @@ class UserViewSet(viewsets.ModelViewSet):
             )
         except IntegrityError as e:
             logger.warning("IntegrityError on serializer.save(): %s", e)
-            # Race condition: duplicate email created between validation and save
+           
             existing = User.objects.filter(email=request.data.get('email')).first()
             logger.debug("Existing user found: %s", bool(existing))
             if existing and not existing.is_verified:
@@ -338,7 +338,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     existing.save(update_fields=["verification_token"])
                     verification_link = f"{settings.FRONTEND_URL}/verify-email?token={token}&email={existing.email}"
                     logger.info("Regenerated token for existing unverified user: %s", existing.email)
-                    # Return token & link in response instead of sending email
+                   
                     return Response(
                         {
                             "message": "Existing unverified account detected — verification token regenerated.",
@@ -351,18 +351,18 @@ class UserViewSet(viewsets.ModelViewSet):
                 except Exception:
                     logger.exception("Failed to regenerate token for existing user; leaving existing user intact")
                     return Response({"error": "Failed to regenerate verification token. Please try again."}, status=500)
-            # If it's not the special case, re-raise the integrity error
+            
             logger.exception("IntegrityError re-raised")
             raise
 
-        # Instead of sending email, return the verification token & link in the response
+        
         try:
             token = user.generate_verification_token()
             user.verification_token = token
             user.save(update_fields=["verification_token"])
             verification_link = f"{settings.FRONTEND_URL}/verify-email?token={token}&email={user.email}"
             logger.info("Verification token generated for %s: %s", user.email, token)
-            # For visibility in logs (console), log the token (you already do this elsewhere)
+            
             logger.debug("Verification token for %s: %s", user.email, token)
 
             return Response(
@@ -377,7 +377,7 @@ class UserViewSet(viewsets.ModelViewSet):
         except Exception:
             logger.exception("Failed to generate/save verification token for newly created user.")
             try:
-                # If token generation fails, attempt to delete user to avoid leaving orphan unverified accounts
+               
                 user.delete()
                 logger.debug("Deleted newly created user after token generation failure: %s", getattr(user, "email", None))
             except Exception:
@@ -385,13 +385,8 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({"error": "Failed to generate verification token. Please try again."}, status=500)
 
     def send_verification_email(self, user):
-        """
-        Disabled: we no longer send emails from the server.
-        Keep this method in case you want to re-enable email sending later,
-        but do not call it from create/resend flows.
-        """
         logger.debug("send_verification_email called but disabled: %s", getattr(user, "email", None))
-        # intentionally no-op
+       
 
     @action(detail=False, methods=["post"], permission_classes=[AllowAny], url_path="resend_verification")
     def resend_verification(self, request):
@@ -419,7 +414,7 @@ class UserViewSet(viewsets.ModelViewSet):
             user.save(update_fields=["verification_token"])
             verification_link = f"{settings.FRONTEND_URL}/verify-email?token={token}&email={user.email}"
             logger.info("Resent verification token generated for %s", email)
-            # Return token & link in response instead of sending email
+            
             return Response(
                 {
                     "message": "Verification token regenerated successfully.",
@@ -580,11 +575,11 @@ class LoginAPIView(APIView):
         if not user:
             return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Generate tokens
+        
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
 
-        # Check onboarding status safely
+       
         onboarding_complete = True
         if user.role == 'student':
             try:
@@ -688,10 +683,10 @@ class PasswordResetResendView(APIView):
             user.generate_password_reset_token()
             user.save()
 
-            # Build reset URL
+            
             frontend_reset_url = f"{settings.FRONTEND_URL}/verify-forgot-password?email={user.email}&token={user.password_reset_token}"
 
-            # Send email with both link and raw token
+            
             email_message = (
                 f"Hello {user.first_name},\n\n"
                 f"Click the link below to reset your password:\n{frontend_reset_url}\n\n"
@@ -722,12 +717,12 @@ class StudentOnboardingView(APIView):
 
     def patch(self, request):
         try:
-            #get or create the profile. If it’s created, save() will auto-generate admission_number
+           
             profile, created = StudentProfile.objects.get_or_create(
                 user=request.user
             )
             
-            #use your serializer to update the profile
+           
             serializer = StudentOnboardingSerializer(
                 profile,
                 data=request.data,
@@ -738,7 +733,7 @@ class StudentOnboardingView(APIView):
             if not serializer.is_valid():
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            serializer.save()  #saves all fields including photo
+            serializer.save() 
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Exception as e:
@@ -752,7 +747,7 @@ class StudentOnboardingProgressView(APIView):
             serializer = StudentOnboardingProgressSerializer(student_profile)
             return Response(serializer.data)
         except StudentProfile.DoesNotExist:
-            # Return empty progress if profile doesn't exist yet
+            
             return Response({
                 "progress": 0,
                 "completed": False,
@@ -775,7 +770,7 @@ def get_user_details(request, user_id):
     try:
         user = User.objects.get(id=user_id)
         
-        # Get profile based on user role
+        
         profile_data = {}
         if user.role == 'teacher':
             profile = TeacherProfile.objects.get(user=user)
@@ -838,7 +833,7 @@ class TeacherOnboardingView(APIView):
 
     def patch(self, request):
         try:
-            # Get or create teacher profile
+          
             profile, created = TeacherProfile.objects.get_or_create(
                 user=request.user,
                 defaults={'user': request.user}
@@ -895,7 +890,7 @@ class ParentOnboardingView(APIView):
 
     def patch(self, request):
         try:
-            # Get or create parent profile
+            
             profile, created = ParentProfile.objects.get_or_create(
                 user=request.user,
                 defaults={'user': request.user}

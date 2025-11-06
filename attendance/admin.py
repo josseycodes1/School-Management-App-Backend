@@ -7,9 +7,9 @@ class AttendanceRecordAdmin(admin.ModelAdmin):
     list_filter = ('status', 'date', 'class_ref', 'recorded_by')
     search_fields = ('student__user__first_name', 'student__user__last_name', 'class_ref__name')
     date_hierarchy = 'date'
-    list_editable = ('status',)  # Allows quick editing directly from list view
+    list_editable = ('status',)  
     ordering = ('-date', 'class_ref')
-    raw_id_fields = ('student', 'recorded_by')  # Better for large student/teacher lists
+    raw_id_fields = ('student', 'recorded_by') 
 
     fieldsets = (
         (None, {
@@ -17,7 +17,7 @@ class AttendanceRecordAdmin(admin.ModelAdmin):
         }),
         ('Record Information', {
             'fields': ('recorded_by',),
-            'classes': ('collapse',)  # Makes this section collapsible
+            'classes': ('collapse',)  
         }),
     )
 
