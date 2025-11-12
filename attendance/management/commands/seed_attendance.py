@@ -18,16 +18,16 @@ class Command(BaseCommand):
             help='Delete all attendance records before seeding'
         )
         parser.add_argument(
-            '--year',
-            type=int,
-            default=2024,
-            help='Year for attendance records (default: 2024)'
+            '--start-date',
+            type=str,
+            default='2024-11-12',
+            help='Start date for attendance records (format: YYYY-MM-DD, default: 2024-11-12)'
         )
         parser.add_argument(
-            '--month',
-            type=int,
-            default=11,
-            help='Month for attendance records (default: 11 for November)'
+            '--end-date',
+            type=str,
+            default='2024-12-30',
+            help='End date for attendance records (format: YYYY-MM-DD, default: 2024-12-30)'
         )
 
     def handle(self, *args, **options):
@@ -48,15 +48,18 @@ class Command(BaseCommand):
             AttendanceRecord.objects.all().delete()
             self.stdout.write(self.style.SUCCESS("✅ Cleared all attendance records."))
 
-        self.create_attendance_records(options['year'], options['month'])
-        self.stdout.write(self.style.SUCCESS(f"✅ Completed attendance seeding for {options['month']}/{options['year']}!"))
+        # Parse dates
+        start_date = datetime.strptime(options['start_date'], '%Y-%m-%d').date()
+        end_date = datetime.strptime(options['end_date'], '%Y-%m-%d').date()
+        
+        self.create_attendance_records(start_date, end_date)
+        self.stdout.write(self.style.SUCCESS(f"✅ Completed attendance seeding from {start_date} to {end_date}!"))
 
-    def create_attendance_records(self, year, month):
+    def create_attendance_records(self, start_date, end_date):
         students = list(StudentProfile.objects.all())
         teachers = list(TeacherProfile.objects.all())
         classes = list(Classes.objects.all())
         
-       
         self.stdout.write(f"📊 Found {len(students)} students, {len(teachers)} teachers, {len(classes)} classes")
         
         if not students or not teachers or not classes:
@@ -72,24 +75,26 @@ class Command(BaseCommand):
         records_created = 0
         days_processed = 0
         
-       
-        import calendar
-        _, num_days = calendar.monthrange(year, month)
+        # Calculate the date range
+        current_date = start_date
+        date_range = []
         
-        self.stdout.write(f"🗓️  Generating attendance for {calendar.month_name[month]} {year} ({num_days} days)")
+        while current_date <= end_date:
+            date_range.append(current_date)
+            current_date += timedelta(days=1)
         
-        for day in range(1, num_days + 1):
-            date = datetime(year, month, day).date()
-            
-           
-            if date.weekday() >= 5: 
+        self.stdout.write(f"🗓️  Generating attendance for {len(date_range)} days from {start_date} to {end_date}")
+        
+        for date in date_range:
+            # Skip weekends (Saturday=5, Sunday=6)
+            if date.weekday() >= 5:
                 self.stdout.write(f"⏭️  Skipping weekend date: {date}")
                 continue
 
             days_processed += 1
             self.stdout.write(f"📅 Processing date: {date}")
             
-           
+            # Select 80% of students for each day
             sample_size = max(1, int(len(students) * 0.8))
             self.stdout.write(f"   Selecting {sample_size} students out of {len(students)}")
             
@@ -97,11 +102,11 @@ class Command(BaseCommand):
             
             for student in selected_students:
                 try:
-                   
+                    # Weighted random selection for attendance status
                     status_choices = [AttendanceStatus.PRESENT, AttendanceStatus.ABSENT, AttendanceStatus.LATE, AttendanceStatus.EXCUSED]
                     selected_status = random.choices(
                         status_choices,
-                        weights=[85, 8, 5, 2],
+                        weights=[85, 8, 5, 2],  # 85% present, 8% absent, 5% late, 2% excused
                         k=1
                     )[0]
                     
@@ -125,4 +130,4 @@ class Command(BaseCommand):
                     import traceback
                     self.stdout.write(self.style.ERROR(traceback.format_exc()))
 
-        self.stdout.write(self.style.SUCCESS(f"✅ Created {records_created} attendance records over {days_processed} days in {calendar.month_name[month]} {year}!"))
+        self.stdout.write(self.style.SUCCESS(f"✅ Created {records_created} attendance records over {days_processed} days from {start_date} to {end_date}!"))
