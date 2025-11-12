@@ -18,16 +18,16 @@ class Command(BaseCommand):
             help='Delete all attendance records before seeding'
         )
         parser.add_argument(
-            '--start-date',
-            type=str,
-            default='2024-11-12',
-            help='Start date for attendance records (format: YYYY-MM-DD, default: 2024-11-12)'
+            '--days',
+            type=int,
+            default=30,
+            help='Number of days to generate attendance for (default: 30)'
         )
         parser.add_argument(
-            '--end-date',
+            '--start-date',
             type=str,
-            default='2024-12-30',
-            help='End date for attendance records (format: YYYY-MM-DD, default: 2024-12-30)'
+            default=None,
+            help='Start date for attendance records (format: YYYY-MM-DD)'
         )
 
     def handle(self, *args, **options):
@@ -48,9 +48,16 @@ class Command(BaseCommand):
             AttendanceRecord.objects.all().delete()
             self.stdout.write(self.style.SUCCESS("✅ Cleared all attendance records."))
 
-        # Parse dates
-        start_date = datetime.strptime(options['start_date'], '%Y-%m-%d').date()
-        end_date = datetime.strptime(options['end_date'], '%Y-%m-%d').date()
+        # Use current date for seeding
+        if options['start_date']:
+            start_date = datetime.strptime(options['start_date'], '%Y-%m-%d').date()
+        else:
+            # Start from today or a recent date
+            start_date = datetime.now().date() - timedelta(days=7)  # Include some past week + future
+        
+        end_date = start_date + timedelta(days=options['days'])
+        
+        self.stdout.write(f"📅 Generating attendance from {start_date} to {end_date} ({options['days']} days)")
         
         self.create_attendance_records(start_date, end_date)
         self.stdout.write(self.style.SUCCESS(f"✅ Completed attendance seeding from {start_date} to {end_date}!"))
@@ -113,7 +120,9 @@ class Command(BaseCommand):
                     selected_class = random.choice(classes)
                     selected_teacher = random.choice(teachers)
                     
-                    self.stdout.write(f"   Creating record for {student} - Status: {selected_status}")
+                    # Only show detailed logging for recent dates to reduce noise
+                    if date >= datetime.now().date() - timedelta(days=7):
+                        self.stdout.write(f"   Creating record for {student} - Status: {selected_status}")
                     
                     AttendanceRecord.objects.create(
                         student=student,
