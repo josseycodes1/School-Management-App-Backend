@@ -58,7 +58,7 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 
 
 ALLOWED_HOSTS = [
-    "josseycodes-academy.onrender.com",
+    "js-academy.onrender.com",
     "localhost",
     "127.0.0.1",
     "https://school-management-app-frontend.onrender.com",
@@ -251,4 +251,3 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated', 
     ]
 }
-
